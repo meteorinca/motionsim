@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>6‑DOF Motion Sim · Wheelchair Motor Build Reference</title>
+  <title>3‑DOF Motion Sim · Pitch, Roll, Yaw (Battery‑Powered)</title>
   <!-- Font Awesome 6 for icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <style>
@@ -14,9 +14,9 @@
     }
 
     body {
-      background: #0b0f15;
-      color: #e0e5eb;
-      font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+      background: #0c1119;
+      color: #dce3ec;
+      font-family: 'Segoe UI', Roboto, system-ui, -apple-system, sans-serif;
       line-height: 1.6;
       padding: 2rem 1.5rem;
       display: flex;
@@ -25,14 +25,13 @@
     }
 
     .container {
-      max-width: 1300px;
+      max-width: 1350px;
       width: 100%;
-      background: #131a22;
-      border-radius: 2.5rem;
-      padding: 2.5rem 2rem;
-      box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8);
-      border: 1px solid #2d3748;
-      backdrop-filter: blur(2px);
+      background: #101824;
+      border-radius: 2.8rem;
+      padding: 2.5rem 2.2rem;
+      box-shadow: 0 30px 55px -15px rgba(0,0,0,0.9);
+      border: 1px solid #263445;
     }
 
     h1, h2, h3 {
@@ -41,12 +40,12 @@
     }
 
     h1 {
-      font-size: 2.8rem;
-      background: linear-gradient(135deg, #b4f0ff 0%, #6ea8d9 80%);
+      font-size: 2.6rem;
+      background: linear-gradient(135deg, #c8e2ff 0%, #528cc7 80%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
-      margin-bottom: 0.5rem;
+      margin-bottom: 0.4rem;
       display: flex;
       align-items: center;
       gap: 0.8rem;
@@ -54,141 +53,105 @@
     }
     h1 i {
       background: none;
-      -webkit-text-fill-color: #4f9fcf;
-      font-size: 2.5rem;
+      -webkit-text-fill-color: #3f87c5;
+      font-size: 2.4rem;
     }
 
     .subtitle {
-      font-size: 1.2rem;
-      color: #8b9bb5;
+      font-size: 1.15rem;
+      color: #8e9fb1;
       margin-bottom: 2.5rem;
-      border-left: 5px solid #2d6a9f;
+      border-left: 5px solid #2d6290;
       padding-left: 1.5rem;
       font-weight: 400;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .highlight-battery {
+      background: #0f1a24;
+      border-radius: 1.5rem;
+      padding: 1.4rem 1.8rem;
+      margin: 1.5rem 0 2rem;
+      border: 1px solid #2e4b3e;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 1.2rem;
+      background: linear-gradient(105deg, #13202b 0%, #0d1922 100%);
+    }
+    .highlight-battery i {
+      font-size: 2.5rem;
+      color: #6bbf6b;
     }
 
     .card-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
       gap: 1.8rem;
-      margin: 2.5rem 0;
+      margin: 2.2rem 0;
     }
 
     .card {
-      background: #1c2633;
+      background: #182330;
       border-radius: 1.8rem;
-      padding: 1.6rem 1.5rem;
-      border: 1px solid #2f4052;
-      transition: transform 0.2s ease, border-color 0.2s;
+      padding: 1.5rem 1.4rem;
+      border: 1px solid #2e4057;
+      transition: all 0.2s ease;
       box-shadow: 0 12px 24px -8px rgba(0,0,0,0.5);
     }
     .card:hover {
-      border-color: #4f7aa6;
-      transform: translateY(-3px);
+      border-color: #4a79a5;
+      transform: translateY(-2px);
     }
-
     .card h3 {
-      font-size: 1.5rem;
-      margin-bottom: 1.2rem;
+      font-size: 1.4rem;
+      margin-bottom: 1.1rem;
       display: flex;
       align-items: center;
       gap: 0.5rem;
-      color: #d4e2fc;
-    }
-    .card h3 i {
-      color: #3d7eb3;
-      font-size: 1.5rem;
+      color: #d2e2fc;
     }
 
-    .badge {
-      background: #1e3b4f;
-      color: #b4e0ff;
-      padding: 0.25rem 0.9rem;
-      border-radius: 3rem;
-      font-size: 0.8rem;
-      font-weight: 600;
-      letter-spacing: 0.4px;
-      margin-left: 0.6rem;
-    }
-
-    ul, .spec-list {
+    ul {
       list-style: none;
-      margin-top: 0.8rem;
+      margin-top: 0.5rem;
     }
     li {
-      margin-bottom: 0.7rem;
+      margin-bottom: 0.65rem;
       display: flex;
       align-items: baseline;
       gap: 0.6rem;
     }
     li i {
-      color: #2f8bc9;
-      width: 1.2rem;
+      color: #2f84c9;
+      width: 1.1rem;
       font-size: 0.9rem;
-      margin-top: 0.25rem;
-    }
-
-    .highlight-box {
-      background: #0f1a24;
-      border-radius: 1.2rem;
-      padding: 1.3rem;
-      margin: 1.8rem 0;
-      border: 1px dashed #3b5b77;
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 1rem;
-    }
-
-    .price {
-      font-size: 2rem;
-      font-weight: 700;
-      color: #9ac7e7;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 1.5rem 0 1rem;
-      font-size: 0.9rem;
-      background: #0f1922;
-      border-radius: 1rem;
-      overflow: hidden;
-    }
-    th {
-      background: #1c2b3a;
-      text-align: left;
-      padding: 0.8rem 1rem;
-      font-weight: 600;
-      color: #c6dcf5;
-    }
-    td {
-      padding: 0.7rem 1rem;
-      border-bottom: 1px solid #253544;
     }
 
     .media-placeholder {
-      background: #0e1621;
-      border-radius: 1.5rem;
-      border: 2px solid #314a61;
+      background: #0b121c;
+      border-radius: 1.2rem;
+      border: 2px dashed #314b63;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       padding: 2rem 1rem;
-      margin: 1.2rem 0;
+      margin: 1.2rem 0 0.5rem;
+      color: #788ea8;
       transition: 0.2s;
-      color: #8299b5;
     }
     .media-placeholder i {
       font-size: 2.8rem;
-      margin-bottom: 0.6rem;
-      color: #3d6180;
+      margin-bottom: 0.5rem;
+      color: #2d5378;
     }
     .media-placeholder span {
       font-weight: 500;
-      background: #1f2e3c;
-      padding: 0.2rem 1rem;
+      background: #1a2737;
+      padding: 0.25rem 1rem;
       border-radius: 20px;
       font-size: 0.8rem;
     }
@@ -196,11 +159,31 @@
       width: 100%;
       border-radius: 1.2rem;
       background: #000;
-      margin: 0.5rem 0;
+      margin: 0.8rem 0 0.3rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1.8rem 0 1rem;
+      background: #0b131e;
+      border-radius: 1rem;
+      overflow: hidden;
+      font-size: 0.9rem;
+    }
+    th {
+      background: #192c3d;
+      text-align: left;
+      padding: 0.8rem 1rem;
+      color: #c9ddfa;
+    }
+    td {
+      padding: 0.7rem 1rem;
+      border-bottom: 1px solid #233647;
     }
 
     .btn {
-      background: #1f364b;
+      background: #1b3045;
       border: none;
       color: white;
       padding: 0.6rem 1.3rem;
@@ -210,28 +193,30 @@
       display: inline-flex;
       align-items: center;
       gap: 0.4rem;
+      border: 1px solid #355571;
+      cursor: pointer;
       transition: 0.2s;
-      border: 1px solid #3e5a75;
     }
     .btn:hover {
-      background: #2c4865;
-      border-color: #6d93bb;
+      background: #264864;
+      border-color: #5f8bb8;
     }
 
     hr {
-      border: 0.5px solid #253545;
+      border: 0.5px solid #233341;
       margin: 2rem 0 1.5rem;
     }
 
     footer {
       text-align: center;
       margin-top: 2.5rem;
-      color: #5e738b;
+      color: #5e768f;
+      font-size: 0.9rem;
     }
 
-    @media (max-width: 650px) {
+    @media (max-width: 700px) {
       body { padding: 0.8rem; }
-      .container { padding: 1.8rem 1.2rem; }
+      .container { padding: 1.5rem 1.1rem; }
       h1 { font-size: 2rem; }
     }
   </style>
@@ -241,216 +226,201 @@
     
     <!-- HEADER -->
     <h1>
-      <i class="fas fa-robot"></i> 6‑DOF Stewart Platform
-      <span class="badge">DIY · $500</span>
+      <i class="fas fa-cogs"></i> 3‑DOF Pitch · Roll · Yaw
     </h1>
     <div class="subtitle">
-      <i class="fas fa-bolt"></i> Wheelchair motor reference · PSU+battery hybrid · ESP32‑S3 control
+      <i class="fas fa-car-battery"></i> Pure battery power · wheelchair motor lever arms · drift effect
     </div>
 
-    <!-- POWER INSIGHT (PSU + BATTERY HYBRID) -->
-    <div class="highlight-box">
-      <i class="fas fa-charging-station" style="font-size: 2.2rem; color: #f0b34b;"></i>
+    <!-- BATTERY-ONLY POWER HIGHLIGHT -->
+    <div class="highlight-battery">
+      <i class="fas fa-charging-station"></i>
       <div style="flex:1">
-        <h3 style="margin:0 0 0.3rem; color:#f5c96c;">⚡ Why PSUs die & batteries survive</h3>
-        <p style="margin:0.2rem 0; font-size:0.95rem;"><strong>Back-EMF regeneration, peak currents, lack of absorption.</strong> Server PSU + dual lead-acid = indestructible.</p>
-        <p style="font-size:0.85rem; color:#b9c7da;"><i class="fas fa-check-circle"></i> HP DPS-1200FB (24V,75A) + 2x12V 9Ah batteries → floats at 27.2V, absorbs regen.</p>
+        <h3 style="margin:0 0 0.25rem; color:#9acfa0;">🔋 No PSU – 24V Deep‑Cycle Bank</h3>
+        <p style="margin:0; font-size:0.95rem;">Two 12V batteries in series · regen absorbed naturally · charge every 2 weeks. <strong>Zero mains noise, total isolation.</strong></p>
       </div>
     </div>
 
-    <!-- MAIN CARDS: MOTORS, ELECTRONICS, MECHANICAL -->
+    <!-- MECHANISM CARDS (3 modules) -->
     <div class="card-grid">
       <div class="card">
-        <h3><i class="fas fa-wheelchair"></i> Motor Gold</h3>
+        <h3><i class="fas fa-arrow-up"></i> Module 1 & 2 : Pitch / Roll</h3>
         <ul>
-          <li><i class="fas fa-microchip"></i> 24V ~250W, >20 Nm torque</li>
-          <li><i class="fas fa-lock"></i> Worm gear (self-locking)</li>
-          <li><i class="fas fa-tachometer-alt"></i> 100–200 rpm output</li>
-          <li><i class="fas fa-coins"></i> $20–40 per motor (salvage)</li>
+          <li><i class="fas fa-wrench"></i> Left + right independent lever arms</li>
+          <li><i class="fas fa-link"></i> 70mm crank → M8 truss rod → platform</li>
+          <li><i class="fas fa-lock"></i> Worm‑drive motors hold position</li>
+          <li><i class="fas fa-ruler"></i> ~240mm rod end centre distance</li>
         </ul>
-        <div class="media-placeholder" id="motorImagePlaceholder">
+        <div class="media-placeholder" id="pitchRollImage">
           <i class="fas fa-image"></i>
-          <span>images/motor-gearbox.jpg</span>
+          <span>images/pitch-roll-lever.jpg</span>
         </div>
       </div>
       
       <div class="card">
-        <h3><i class="fas fa-plug"></i> Hybrid PSU</h3>
+        <h3><i class="fas fa-arrows-left-right"></i> Module 3 : Yaw / Traction Loss</h3>
         <ul>
-          <li><i class="fas fa-server"></i> Server PSU 24V 75A</li>
-          <li><i class="fas fa-car-battery"></i> 2×12V lead-acid series</li>
-          <li><i class="fas fa-shield-alt"></i> 40A fuse + TVS 1.5KE33A</li>
-          <li><i class="fas fa-bolt"></i> Schottky diode on PSU out</li>
+          <li><i class="fas fa-sliders-h"></i> Central motor + drawer slides</li>
+          <li><i class="fas fa-cog"></i> 70mm crank → lateral carriage</li>
+          <li><i class="fas fa-road"></i> Drift effect / side‑sway</li>
+          <li><i class="fas fa-compress"></i> Stroke ~120mm</li>
         </ul>
-        <div class="media-placeholder" id="psuImagePlaceholder">
+        <div class="media-placeholder" id="yawSlideImage">
           <i class="fas fa-image"></i>
-          <span>images/psu-battery-hybrid.jpg</span>
+          <span>images/yaw-slide-mechanism.jpg</span>
         </div>
       </div>
 
       <div class="card">
-        <h3><i class="fas fa-cogs"></i> Actuator DIY</h3>
+        <h3><i class="fas fa-microchip"></i> Electronics & Control</h3>
         <ul>
-          <li><i class="fas fa-wrench"></i> M12–M16 threaded rod</li>
-          <li><i class="fas fa-nut"></i> Anti-backlash delrin nut</li>
-          <li><i class="fas fa-joint"></i> 2 rod ends (Heim M8)</li>
-          <li><i class="fas fa-ruler"></i> Stroke ~150 mm</li>
+          <li><i class="fas fa-brain"></i> ESP32‑S3 with 1kHz PID</li>
+          <li><i class="fas fa-compass"></i> AS5600 encoders on motor shafts</li>
+          <li><i class="fas fa-bolt"></i> BTS7960 drivers (3x)</li>
+          <li><i class="fas fa-wifi"></i> ESP‑NOW wireless telemetry</li>
         </ul>
-        <div class="media-placeholder" id="actuatorImagePlaceholder">
+        <div class="media-placeholder" id="controllerImage">
           <i class="fas fa-image"></i>
-          <span>images/actuator-assembly.jpg</span>
+          <span>images/esp32-wiring.jpg</span>
         </div>
       </div>
     </div>
 
-    <!-- VIDEO SECTION (two short mp4s) -->
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.8rem; margin: 1.8rem 0;">
+    <!-- VIDEO PLACEHOLDERS (two short mp4s) -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.8rem; margin: 1.5rem 0 2rem;">
       <div>
-        <h3 style="margin-bottom: 0.5rem;"><i class="fas fa-video"></i> Platform test · heave</h3>
-        <video controls muted loop preload="metadata" poster="images/poster-heave.jpg" class="video-placeholder" id="videoHeave">
-          <source src="videos/platform-heave.mp4" type="video/mp4">
-          Your browser does not support the video tag.
+        <h3 style="margin-bottom: 0.4rem;"><i class="fas fa-video"></i> Pitch & Roll demo</h3>
+        <video controls muted loop preload="metadata" poster="images/poster-pitch-roll.jpg" class="video-placeholder">
+          <source src="videos/pitch-roll-demo.mp4" type="video/mp4">
         </video>
-        <p style="font-size:0.8rem; color:#8899b0; margin-top:0.3rem;"><i class="far fa-save"></i> videos/platform-heave.mp4</p>
+        <p style="font-size:0.8rem; color:#7f92ab; margin-top:0.2rem;"><i class="far fa-save"></i> videos/pitch-roll-demo.mp4</p>
       </div>
       <div>
-        <h3 style="margin-bottom: 0.5rem;"><i class="fas fa-video"></i> 6‑DOF motion sequence</h3>
-        <video controls muted loop preload="metadata" poster="images/poster-motion.jpg" class="video-placeholder" id="videoMotion">
-          <source src="videos/six-dof-motion.mp4" type="video/mp4">
-          Your browser does not support the video tag.
+        <h3 style="margin-bottom: 0.4rem;"><i class="fas fa-video"></i> Yaw drift effect</h3>
+        <video controls muted loop preload="metadata" poster="images/poster-yaw.jpg" class="video-placeholder">
+          <source src="videos/yaw-drift.mp4" type="video/mp4">
         </video>
-        <p style="font-size:0.8rem; color:#8899b0; margin-top:0.3rem;"><i class="far fa-save"></i> videos/six-dof-motion.mp4</p>
+        <p style="font-size:0.8rem; color:#7f92ab; margin-top:0.2rem;"><i class="far fa-save"></i> videos/yaw-drift.mp4</p>
       </div>
     </div>
 
-    <!-- BOM TABLE + TOTAL COST -->
-    <h2 style="margin: 2rem 0 1rem;"><i class="fas fa-shopping-cart"></i> Bill of Materials (~$473)</h2>
+    <!-- BILL OF MATERIALS TABLE -->
+    <h2 style="margin: 1.5rem 0 1rem;"><i class="fas fa-clipboard-list"></i> Bill of Materials · Battery‑Only 3‑DOF</h2>
     <div style="overflow-x: auto;">
       <table id="bomTable">
         <thead> <tr><th>Item</th><th>Spec / Source</th><th>Qty</th><th>Cost</th></tr> </thead>
         <tbody>
-          <tr><td>Wheelchair motors</td><td>24V 250W worm (Pride/Invacare)</td><td>6</td><td>$150</td></tr>
-          <tr><td>Lead screw + nuts</td><td>Tr12x3 trapezoidal, anti-backlash</td><td>6</td><td>$45</td></tr>
-          <tr><td>Rod ends (Heim)</td><td>M8 male, 12 pcs</td><td>12</td><td>$20</td></tr>
-          <tr><td>Magnetic encoders</td><td>AS5600 module + diametric magnet</td><td>6</td><td>$20</td></tr>
-          <tr><td>Motor drivers</td><td>BTS7960 IBT-2 43A peak</td><td>6</td><td>$30</td></tr>
-          <tr><td>ESP32‑S3</td><td>Wemos S3 / similar</td><td>1</td><td>$8</td></tr>
-          <tr><td>Power supply</td><td>HP DPS-1200FB 24V 75A</td><td>1</td><td>$25</td></tr>
-          <tr><td>Batteries</td><td>12V 9Ah lead-acid (2 in series)</td><td>2</td><td>$40</td></tr>
-          <tr><td>Frame (plywood/lumber)</td><td>18mm ply + 2x4</td><td>1</td><td>$65</td></tr>
-          <tr><td>Shaker + amp</td><td>BST-1 + USB sound</td><td>1</td><td>$55</td></tr>
-          <tr><td>Fuses, TVS, E‑stop</td><td>40A, 1.5KE33A, wiring</td><td>1</td><td>$15</td></tr>
+          <tr><td>Wheelchair motors</td><td>24V 250W worm-drive (Pride/Invacare)</td><td>3</td><td>$80</td></tr>
+          <tr><td>Deep-cycle batteries</td><td>12V 22Ah sealed lead-acid (UB12220)</td><td>2</td><td>$100</td></tr>
+          <tr><td>Motor drivers</td><td>BTS7960 IBT-2 43A peak + heatsinks</td><td>3</td><td>$18</td></tr>
+          <tr><td>Magnetic encoders</td><td>AS5600 module + diametric magnet</td><td>3</td><td>$12</td></tr>
+          <tr><td>Microcontroller</td><td>ESP32‑S3 dev board</td><td>1</td><td>$8</td></tr>
+          <tr><td>Crank arms</td><td>Steel flat bar 70mm c-c, 3 pcs</td><td>3</td><td>$12</td></tr>
+          <tr><td>Rod ends (Heim)</td><td>M8 male right-hand (for truss links)</td><td>6</td><td>$15</td></tr>
+          <tr><td>M8 threaded rod</td><td>1 metre + jam nuts</td><td>1</td><td>$5</td></tr>
+          <tr><td>Yaw slide mechanism</td><td>Heavy-duty drawer slides 500mm</td><td>1 pair</td><td>$18</td></tr>
+          <tr><td>Top platform (plywood)</td><td>18mm × 1340×460mm</td><td>1 sheet</td><td>$40</td></tr>
+          <tr><td>Base reinforcement</td><td>12mm ply skin + hardware</td><td>1</td><td>$20</td></tr>
+          <tr><td>Battery charger</td><td>24V smart charger (NOCO Genius)</td><td>1</td><td>$50</td></tr>
+          <tr><td>Battery isolator switch</td><td>100A rated kill switch</td><td>1</td><td>$10</td></tr>
+          <tr><td>40A fuse + holder</td><td>ANL or Maxi fuse</td><td>1</td><td>$8</td></tr>
+          <tr><td>Wiring & connectors</td><td>10 AWG, XT60, bus bars</td><td>lot</td><td>$18</td></tr>
+          <tr><td>Bass shaker kit (optional)</td><td>BST‑1 + amp + USB sound</td><td>1</td><td>$60</td></tr>
         </tbody>
       </table>
     </div>
-    <div style="display: flex; justify-content: flex-end; font-size: 1.6rem; font-weight: bold; color:#bfdaf5;">
-      <span>Total est. ~$473–$573</span>
+    <div style="display: flex; justify-content: flex-end; font-size: 1.5rem; font-weight: bold; color:#bed9fa; margin-top: 0.2rem;">
+      <span>Total ~ $474 – $528</span>
     </div>
 
-    <!-- SAFETY & CONTROL HIGHLIGHTS -->
-    <div style="display: flex; flex-wrap: wrap; gap: 2rem; margin: 2.5rem 0 1.5rem; align-items: center;">
-      <div style="background: #16212e; border-radius: 2rem; padding: 1.2rem 1.8rem;">
-        <i class="fas fa-shield-haltered" style="font-size: 2rem; color: #e05a5a;"></i>
-        <h3 style="margin:0.3rem 0">Safety</h3>
-        <p>E‑stop · physical screw collars · firmware limits · worm self-locking</p>
+    <!-- SAFETY & BUILD NOTES -->
+    <div style="display: flex; flex-wrap: wrap; gap: 1.8rem; margin: 2.5rem 0 1.2rem;">
+      <div style="background:#152130; border-radius:1.5rem; padding:1.2rem 1.8rem; flex:1;">
+        <i class="fas fa-shield-alt" style="font-size:2rem; color:#d97676;"></i>
+        <h3 style="margin:0.3rem 0">Through‑Frame Pivots</h3>
+        <p style="font-size:0.9rem;">M8 threaded rod passes completely through the wood with washers and nyloc nuts. Distributes force, prevents tear‑out.</p>
       </div>
-      <div style="background: #16212e; border-radius: 2rem; padding: 1.2rem 1.8rem;">
-        <i class="fas fa-microchip" style="font-size: 2rem; color: #7cb9e8;"></i>
-        <h3 style="margin:0.3rem 0">ESP32‑S3 Core</h3>
-        <p>Dual-core 1kHz PID · ESP‑NOW wireless · AS5600 I²C</p>
+      <div style="background:#152130; border-radius:1.5rem; padding:1.2rem 1.8rem; flex:1;">
+        <i class="fas fa-battery-full" style="font-size:2rem; color:#7cc97c;"></i>
+        <h3 style="margin:0.3rem 0">Battery Safety</h3>
+        <p style="font-size:0.9rem;">40A fuse on positive, isolator switch accessible from seat. Batteries strapped down in base torsion box.</p>
       </div>
     </div>
 
     <hr>
-    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
-      <p><i class="fas fa-folder-open"></i> <strong>Media placeholders (upload these):</strong></p>
-      <a href="#" class="btn" id="showFileListBtn"><i class="far fa-list-alt"></i> File checklist</a>
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap:1rem;">
+      <p><i class="fas fa-folder-tree"></i> <strong>Media files to upload (placeholders shown above):</strong></p>
+      <button class="btn" id="toggleFileListBtn"><i class="far fa-list-alt"></i> View file checklist</button>
     </div>
-    <div id="fileListPanel" style="display: none; background: #0f1922; border-radius: 1.2rem; padding: 1.2rem; margin-top: 1rem; border:1px solid #354b61;">
-      <ul style="list-style: none; columns: 2; column-gap: 2rem;">
-        <li><i class="far fa-image"></i> images/motor-gearbox.jpg</li>
-        <li><i class="far fa-image"></i> images/psu-battery-hybrid.jpg</li>
-        <li><i class="far fa-image"></i> images/actuator-assembly.jpg</li>
-        <li><i class="far fa-image"></i> images/poster-heave.jpg</li>
-        <li><i class="far fa-image"></i> images/poster-motion.jpg</li>
-        <li><i class="fas fa-film"></i> videos/platform-heave.mp4</li>
-        <li><i class="fas fa-film"></i> videos/six-dof-motion.mp4</li>
+    <div id="fileChecklist" style="display: none; background:#0d1520; border-radius:1.2rem; padding:1.2rem; margin-top:1rem; border:1px solid #2c4056;">
+      <ul style="columns:2; column-gap:2rem; list-style:none;">
+        <li><i class="far fa-image"></i> images/pitch-roll-lever.jpg</li>
+        <li><i class="far fa-image"></i> images/yaw-slide-mechanism.jpg</li>
+        <li><i class="far fa-image"></i> images/esp32-wiring.jpg</li>
+        <li><i class="far fa-image"></i> images/poster-pitch-roll.jpg</li>
+        <li><i class="far fa-image"></i> images/poster-yaw.jpg</li>
+        <li><i class="fas fa-film"></i> videos/pitch-roll-demo.mp4</li>
+        <li><i class="fas fa-film"></i> videos/yaw-drift.mp4</li>
       </ul>
-      <p style="margin-top:0.6rem; font-size:0.85rem;">Place inside <code>/images</code> and <code>/videos</code> folders in repo root.</p>
+      <p style="margin-top:0.6rem; font-size:0.85rem; color:#9aaec5;">Place inside <code>/images</code> and <code>/videos</code> folders at repository root.</p>
     </div>
-    
+
     <footer>
-      <i class="fas fa-code-branch"></i> DIY Motion Sim Reference · <span id="currentYear"></span> · Build safe, race hard.
+      <i class="fas fa-code-branch"></i> 3‑DOF Battery Motion Sim Reference · <span id="currentYear"></span> · Build safe, drift happy.
     </footer>
   </div>
 
   <script>
     (function() {
-      // Set current year
       document.getElementById('currentYear').textContent = new Date().getFullYear();
 
-      // Toggle file list visibility
-      const btn = document.getElementById('showFileListBtn');
-      const panel = document.getElementById('fileListPanel');
-      if (btn && panel) {
-        btn.addEventListener('click', (e) => {
-          e.preventDefault();
-          if (panel.style.display === 'none' || panel.style.display === '') {
-            panel.style.display = 'block';
-            btn.innerHTML = '<i class="far fa-eye-slash"></i> Hide list';
+      const toggleBtn = document.getElementById('toggleFileListBtn');
+      const checklist = document.getElementById('fileChecklist');
+      if (toggleBtn && checklist) {
+        toggleBtn.addEventListener('click', () => {
+          if (checklist.style.display === 'none' || checklist.style.display === '') {
+            checklist.style.display = 'block';
+            toggleBtn.innerHTML = '<i class="far fa-eye-slash"></i> Hide checklist';
           } else {
-            panel.style.display = 'none';
-            btn.innerHTML = '<i class="far fa-list-alt"></i> File checklist';
+            checklist.style.display = 'none';
+            toggleBtn.innerHTML = '<i class="far fa-list-alt"></i> View file checklist';
           }
         });
       }
 
-      // Image placeholders: lazy attempt to load images and replace placeholder if possible.
-      // They remain as styled placeholders until real images exist.
-      const imagePlaceholders = [
-        { id: 'motorImagePlaceholder', src: 'images/motor-gearbox.jpg' },
-        { id: 'psuImagePlaceholder', src: 'images/psu-battery-hybrid.jpg' },
-        { id: 'actuatorImagePlaceholder', src: 'images/actuator-assembly.jpg' }
+      // Attempt to replace image placeholders with actual images if they load.
+      const imageMap = [
+        { placeholderId: 'pitchRollImage', src: 'images/pitch-roll-lever.jpg' },
+        { placeholderId: 'yawSlideImage', src: 'images/yaw-slide-mechanism.jpg' },
+        { placeholderId: 'controllerImage', src: 'images/esp32-wiring.jpg' }
       ];
 
-      imagePlaceholders.forEach(item => {
-        const container = document.getElementById(item.id);
+      imageMap.forEach(item => {
+        const container = document.getElementById(item.placeholderId);
         if (!container) return;
-        // Try to create an image element to test if file exists (will show if browser loads it)
         const img = new Image();
         img.src = item.src;
         img.alt = item.src.split('/').pop();
         img.style.width = '100%';
-        img.style.borderRadius = '1.2rem';
+        img.style.borderRadius = '1rem';
         img.style.marginTop = '0.5rem';
         img.onload = function() {
-          // If image loads, replace placeholder content nicely
           container.innerHTML = '';
           container.appendChild(img);
-          container.style.padding = '0.3rem';
+          container.style.padding = '0.2rem';
           container.style.border = 'none';
         };
         img.onerror = function() {
-          // Keep placeholder as is, no action needed.
-          console.log('Image not found (placeholder remains): ' + item.src);
+          console.log('Placeholder remains for: ' + item.src);
         };
       });
 
-      // Video posters likewise attempt to preload, but we keep video elements as is.
-      // Additional dynamic check not strictly needed; videos show controls.
-
-      // Add subtle interactivity: highlight table row on hover (already via css, but js enhancement)
-      const rows = document.querySelectorAll('#bomTable tbody tr');
-      rows.forEach(row => {
-        row.addEventListener('mouseenter', () => {
-          row.style.backgroundColor = '#1d3142';
-        });
-        row.addEventListener('mouseleave', () => {
-          row.style.backgroundColor = '';
-        });
+      // subtle table row hover effect
+      document.querySelectorAll('#bomTable tbody tr').forEach(row => {
+        row.addEventListener('mouseenter', () => row.style.backgroundColor = '#1c3146');
+        row.addEventListener('mouseleave', () => row.style.backgroundColor = '');
       });
 
-      console.log('🚀 Motion sim reference ready. Upload images/videos as listed.');
     })();
   </script>
 </body>
