@@ -229,15 +229,15 @@
       <i class="fas fa-cogs"></i> 3‑DOF Pitch · Roll · Yaw
     </h1>
     <div class="subtitle">
-      <i class="fas fa-car-battery"></i> Pure battery power · wheelchair motor lever arms · drift effect
+      <i class="fas fa-car-battery"></i> Battery power · Wheelchair motor lever arms · Drift effect
     </div>
 
     <!-- BATTERY-ONLY POWER HIGHLIGHT -->
     <div class="highlight-battery">
       <i class="fas fa-charging-station"></i>
       <div style="flex:1">
-        <h3 style="margin:0 0 0.25rem; color:#9acfa0;">🔋 No PSU – 24V Deep‑Cycle Bank</h3>
-        <p style="margin:0; font-size:0.95rem;">Two 12V batteries in series · regen absorbed naturally · charge every 2 weeks. <strong>Zero mains noise, total isolation.</strong></p>
+        <h3 style="margin:0 0 0.25rem; color:#9acfa0;">🔋 No PSU – 24V Battery Bank</h3>
+        <p style="margin:0; font-size:0.95rem;">Two 12V batteries in series · regen absorbed · should need charge ~2 weeks.
       </div>
     </div>
 
@@ -260,7 +260,7 @@
       <div class="card">
         <h3><i class="fas fa-arrows-left-right"></i> Module 3 : Yaw / Traction Loss</h3>
         <ul>
-          <li><i class="fas fa-sliders-h"></i> Central motor + drawer slides</li>
+          <li><i class="fas fa-sliders-h"></i> Central motor + Yaw Wheel</li>
           <li><i class="fas fa-cog"></i> 70mm crank → lateral carriage</li>
           <li><i class="fas fa-road"></i> Drift effect / side‑sway</li>
           <li><i class="fas fa-compress"></i> Stroke ~120mm</li>
@@ -318,7 +318,7 @@
           <tr><td>Crank arms</td><td>Steel flat bar 70mm c-c, 3 pcs</td><td>3</td><td>$12</td></tr>
           <tr><td>Rod ends (Heim)</td><td>M8 male right-hand (for truss links)</td><td>6</td><td>$15</td></tr>
           <tr><td>M8 threaded rod</td><td>1 metre + jam nuts</td><td>1</td><td>$5</td></tr>
-          <tr><td>Yaw slide mechanism</td><td>Heavy-duty drawer slides 500mm</td><td>1 pair</td><td>$18</td></tr>
+          <tr><td>Yaw slide mechanism</td><td>Heavy-duty wheel for Yaw</td><td>1 pair</td><td>$18</td></tr>
           <tr><td>Top platform (plywood)</td><td>18mm × 1340×460mm</td><td>1 sheet</td><td>$40</td></tr>
           <tr><td>Base reinforcement</td><td>12mm ply skin + hardware</td><td>1</td><td>$20</td></tr>
           <tr><td>Battery charger</td><td>24V smart charger (NOCO Genius)</td><td>1</td><td>$50</td></tr>
@@ -349,20 +349,16 @@
 
     <hr>
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap:1rem;">
-      <p><i class="fas fa-folder-tree"></i> <strong>Media files to upload (placeholders shown above):</strong></p>
-      <button class="btn" id="toggleFileListBtn"><i class="far fa-list-alt"></i> View file checklist</button>
+      <p><i class="fas fa-folder-tree"></i> <strong>More images from post:</strong></p>
+      <button class="btn" id="toggleFileListBtn"><i class="far fa-list-alt"></i> Show More Images</button>
     </div>
     <div id="fileChecklist" style="display: none; background:#0d1520; border-radius:1.2rem; padding:1.2rem; margin-top:1rem; border:1px solid #2c4056;">
       <ul style="columns:2; column-gap:2rem; list-style:none;">
-        <li><i class="far fa-image"></i> images/pitch-roll-lever.jpg</li>
-        <li><i class="far fa-image"></i> images/yaw-slide-mechanism.jpg</li>
-        <li><i class="far fa-image"></i> images/esp32-wiring.jpg</li>
-        <li><i class="far fa-image"></i> images/poster-pitch-roll.jpg</li>
-        <li><i class="far fa-image"></i> images/poster-yaw.jpg</li>
-        <li><i class="fas fa-film"></i> videos/pitch-roll-demo.mp4</li>
-        <li><i class="fas fa-film"></i> videos/yaw-drift.mp4</li>
+        <div class="media-placeholder" id="controllerImage">
+          <i class="fas fa-image"></i>
+          <span>images/esp32-wiring.jpg</span>
+        </div>
       </ul>
-      <p style="margin-top:0.6rem; font-size:0.85rem; color:#9aaec5;">Place inside <code>/images</code> and <code>/videos</code> folders at repository root.</p>
     </div>
 
     <footer>
