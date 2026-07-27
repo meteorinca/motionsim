@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MotionSim Bench Dashboard</title>
+  <style>
+    :root {
+      --bg: #0b0e14;
+      --card: #151921;
+      --accent: #00f0ff;
+      --magenta: #ff007f;
+      --green: #00ff66;
+      --text: #e0e6ed;
+      --dim: #5c6b73;
+    }
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', monospace, sans-serif;
+      margin: 0;
+      padding: 20px;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid var(--accent);
+      padding-bottom: 10px;
+      margin-bottom: 20px;
+    }
+    h1 {
+      margin: 0;
+      color: var(--accent);
+      font-size: 1.6rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      text-shadow: 0 0 10px rgba(0, 240, 255, 0.4);
+    }
+    .badge {
+      background: var(--card);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 0.8rem;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid #222b38;
+      border-radius: 8px;
+      padding: 15px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+    .card h3 {
+      margin: 0 0 10px 0;
+      color: var(--dim);
+      font-size: 0.85rem;
+      text-transform: uppercase;
+    }
+    .val {
+      font-size: 1.8rem;
+      font-weight: bold;
+      color: var(--text);
+    }
+    .unit {
+      font-size: 0.9rem;
+      color: var(--dim);
+    }
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 15px;
+    }
+    button {
+      background: var(--card);
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      padding: 10px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.2s;
+    }
+    button:hover {
+      background: var(--accent);
+      color: var(--bg);
+      box-shadow: 0 0 12px rgba(0, 240, 255, 0.6);
+    }
+    button.danger {
+      border-color: var(--magenta);
+      color: var(--magenta);
+    }
+    button.danger:hover {
+      background: var(--magenta);
+      color: #fff;
+      box-shadow: 0 0 12px rgba(255, 0, 127, 0.6);
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>MOTIONSIM BENCH</h1>
+    <div class="badge" id="device-ip">IP: ---</div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h3>Packet Rate</h3>
+      <div class="val" id="rate">0.0 <span class="unit">Hz</span></div>
+    </div>
+    <div class="card">
+      <h3>Lost Packets</h3>
+      <div class="val" style="color:var(--magenta);" id="lost">0</div>
+    </div>
+    <div class="card">
+      <h3>Max RX Stall</h3>
+      <div class="val" id="stall">0 <span class="unit">us</span></div>
+    </div>
+    <div class="card">
+      <h3>WiFi Signal (RSSI)</h3>
+      <div class="val" style="color:var(--green);" id="rssi">0 <span class="unit">dBm</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>OLED Mode & Control</h3>
+    <div class="btn-group">
+      <button onclick="setOled('stats')">Stats Screen</button>
+      <button onclick="setOled('graph')">Graph Screen</button>
+      <button onclick="setOled('wifi')">WiFi Info</button>
+      <button onclick="setOled('eyes')">Robot Eyes</button>
+      <button onclick="setOled('cycle')">Cycle Mode</button>
+      <button onclick="resetStats()">Reset Stats</button>
+      <button class="danger" onclick="reboot()">Reboot Device</button>
+    </div>
+  </div>
+
+  <script>
+    async function updateStats() {
+      try {
+        const res = await fetch('/api/stats');
+        const data = await res.json();
+        document.getElementById('rate').innerText = data.pkt_rate_hz.toFixed(1);
+        document.getElementById('lost').innerText = data.lost_count;
+        document.getElementById('stall').innerText = data.max_rx_interval_us;
+        document.getElementById('rssi').innerText = data.rssi;
+        document.getElementById('device-ip').innerText = 'IP: ' + data.ip;
+      } catch(e){}
+    }
+
+    async function setOled(mode) {
+      await fetch('/api/oled?mode=' + mode);
+    }
+
+    async function resetStats() {
+      await fetch('/api/reset');
+    }
+
+    async function reboot() {
+      if (confirm('Reboot ESP32 benchmark device?')) {
+        await fetch('/api/reboot');
+      }
+    }
+
+    setInterval(updateStats, 500);
+    updateStats();
+  </script>
+</body>
+</html>

@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>MotionSimBot Control Panel</title>
+  <style>
+    :root {
+      --bg: #080b12;
+      --card: #121824;
+      --accent: #00f0ff;
+      --red: #ff0055;
+      --green: #00ff66;
+      --text: #e2e8f0;
+      --dim: #64748b;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Consolas', monospace;
+      margin: 0;
+      padding: 20px;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid var(--accent);
+      padding-bottom: 12px;
+      margin-bottom: 20px;
+    }
+    h1 { margin: 0; color: var(--accent); font-size: 1.6rem; letter-spacing: 2px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 15px; margin-bottom: 20px; }
+    .card { background: var(--card); border: 1px solid #1e293b; border-radius: 8px; padding: 16px; }
+    .card h3 { margin: 0 0 10px 0; color: var(--dim); font-size: 0.85rem; text-transform: uppercase; }
+    .val { font-size: 1.8rem; font-weight: bold; }
+    .unit { font-size: 0.9rem; color: var(--dim); }
+    .controls { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 15px; }
+    button {
+      background: var(--card); color: var(--accent); border: 1px solid var(--accent);
+      padding: 10px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; font-family: inherit;
+    }
+    button:hover { background: var(--accent); color: var(--bg); }
+    button.estop { border-color: var(--red); color: var(--red); font-size: 1.2rem; }
+    button.estop:hover { background: var(--red); color: #fff; }
+    input { background: var(--card); border: 1px solid var(--dim); color: #fff; padding: 8px; border-radius: 4px; font-family: inherit; width: 70px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🤖 MOTIONSIMBOT CONTROLLER</h1>
+    <button class="estop" onclick="toggleEstop()">🚨 EMERGENCY STOP</button>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h3>Joint 1 (Roll)</h3>
+      <div class="val" id="j1-angle">0.0°</div>
+      <div class="unit" id="j1-target">Target: 180.0°</div>
+    </div>
+    <div class="card">
+      <h3>Joint 2 (Roll)</h3>
+      <div class="val" id="j2-angle">0.0°</div>
+      <div class="unit" id="j2-target">Target: 180.0°</div>
+    </div>
+    <div class="card">
+      <h3>Joint 3 (Pitch/Heave)</h3>
+      <div class="val" id="j3-angle">0.0°</div>
+      <div class="unit" id="j3-target">Target: 180.0°</div>
+    </div>
+    <div class="card">
+      <h3>UDP Packet Rate</h3>
+      <div class="val" style="color:var(--green)" id="rate">0.0 <span class="unit">Hz</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Closed-Loop PID Tuning</h3>
+    <div class="controls">
+      <label>Kp: <input type="number" id="kp" step="0.1" value="8.5"></label>
+      <label>Ki: <input type="number" id="ki" step="0.05" value="0.2"></label>
+      <label>Kd: <input type="number" id="kd" step="0.1" value="1.2"></label>
+      <button onclick="setPid()">Update PID</button>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:20px;">
+    <h3>Hall Sensor Zero Calibration</h3>
+    <div class="controls">
+      <button onclick="calibrate(1)">Zero Joint 1</button>
+      <button onclick="calibrate(2)">Zero Joint 2</button>
+      <button onclick="calibrate(3)">Zero Joint 3</button>
+    </div>
+  </div>
+
+  <script>
+    let estopState = false;
+
+    async function poll() {
+      try {
+        const res = await fetch('/api/stats');
+        const d = await res.json();
+        document.getElementById('j1-angle').innerText = d.m1.actual.toFixed(2) + '°';
+        document.getElementById('j1-target').innerText = 'Target: ' + d.m1.target.toFixed(1) + '° | Duty: ' + d.m1.duty;
+
+        document.getElementById('j2-angle').innerText = d.m2.actual.toFixed(2) + '°';
+        document.getElementById('j2-target').innerText = 'Target: ' + d.m2.target.toFixed(1) + '° | Duty: ' + d.m2.duty;
+
+        document.getElementById('j3-angle').innerText = d.m3.actual.toFixed(2) + '°';
+        document.getElementById('j3-target').innerText = 'Target: ' + d.m3.target.toFixed(1) + '° | Duty: ' + d.m3.duty;
+
+        document.getElementById('rate').innerText = d.pkt_rate_hz.toFixed(1);
+        estopState = d.estop;
+      } catch(e){}
+    }
+
+    async function setPid() {
+      const kp = document.getElementById('kp').value;
+      const ki = document.getElementById('ki').value;
+      const kd = document.getElementById('kd').value;
+      await fetch('/api/pid?kp=' + kp + '&ki=' + ki + '&kd=' + kd);
+    }
+
+    async function calibrate(joint) {
+      if (confirm('Set current physical position as Zero 0° reference for Joint ' + joint + '?')) {
+        await fetch('/api/calibrate?joint=' + joint, {method: 'POST'});
+      }
+    }
+
+    async function toggleEstop() {
+      estopState = !estopState;
+      await fetch('/api/estop?state=' + (estopState ? 1 : 0), {method: 'POST'});
+    }
+
+    setInterval(poll, 250);
+  </script>
+</body>
+</html>
