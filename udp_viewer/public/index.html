@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DiRT Rally UDP Telemetry</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="background-blobs">
+        <div class="blob blob1"></div>
+        <div class="blob blob2"></div>
+    </div>
+
+    <div class="app-container">
+        <header>
+            <div class="logo">
+                <h1>UDP Telemetry</h1>
+                <div class="status-indicator">
+                    <span id="connection-dot" class="dot disconnected"></span>
+                    <span id="connection-status">Waiting for connection...</span>
+                </div>
+            </div>
+            <div class="controls">
+                <button id="btn-toggle-raw" class="toggle-btn">Enable RAW View</button>
+            </div>
+        </header>
+
+        <main>
+            <!-- Dashboard View -->
+            <div id="dashboard-view" class="view active">
+                <div class="grid">
+                    
+                    <!-- Speed & Gear -->
+                    <div class="card glass">
+                        <h2>Speed & Gear</h2>
+                        <div class="metric-big">
+                            <span id="val-speed">0</span>
+                            <span class="unit">km/h</span>
+                        </div>
+                        <div class="metric-row">
+                            <div class="metric">
+                                <span class="label">Gear</span>
+                                <span class="val" id="val-gear">N</span>
+                            </div>
+                            <div class="metric">
+                                <span class="label">RPM</span>
+                                <span class="val" id="val-rpm">0</span>
+                            </div>
+                        </div>
+                        <!-- Progress bar for RPM -->
+                        <div class="progress-container">
+                            <div class="progress-bar" id="bar-rpm" style="width: 0%;"></div>
+                        </div>
+                    </div>
+
+                    <!-- G-Forces (MotionSim Core) -->
+                    <div class="card glass">
+                        <h2>G-Forces</h2>
+                        <div class="metric-row">
+                            <div class="metric">
+                                <span class="label">Sway (X)</span>
+                                <span class="val" id="val-sway">0.00</span>
+                            </div>
+                            <div class="metric">
+                                <span class="label">Heave (Y)</span>
+                                <span class="val" id="val-heave">0.00</span>
+                            </div>
+                            <div class="metric">
+                                <span class="label">Surge (Z)</span>
+                                <span class="val" id="val-surge">0.00</span>
+                            </div>
+                        </div>
+                        <div class="gforce-visualizer">
+                            <div class="crosshair"></div>
+                            <div class="dot-indicator" id="g-dot"></div>
+                        </div>
+                    </div>
+
+                    <!-- Suspension -->
+                    <div class="card glass suspension-card">
+                        <h2>Suspension Travel</h2>
+                        <div class="suspension-grid">
+                            <div class="suspension-wheel">
+                                <span class="label">FL</span>
+                                <div class="susp-bar-container">
+                                    <div class="susp-bar" id="susp-fl" style="height: 50%;"></div>
+                                </div>
+                                <span class="val-small" id="val-susp-fl">0</span>
+                            </div>
+                            <div class="suspension-wheel">
+                                <span class="label">FR</span>
+                                <div class="susp-bar-container">
+                                    <div class="susp-bar" id="susp-fr" style="height: 50%;"></div>
+                                </div>
+                                <span class="val-small" id="val-susp-fr">0</span>
+                            </div>
+                            <div class="suspension-wheel">
+                                <span class="label">RL</span>
+                                <div class="susp-bar-container">
+                                    <div class="susp-bar" id="susp-rl" style="height: 50%;"></div>
+                                </div>
+                                <span class="val-small" id="val-susp-rl">0</span>
+                            </div>
+                            <div class="suspension-wheel">
+                                <span class="label">RR</span>
+                                <div class="susp-bar-container">
+                                    <div class="susp-bar" id="susp-rr" style="height: 50%;"></div>
+                                </div>
+                                <span class="val-small" id="val-susp-rr">0</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Pitch, Roll, Yaw -->
+                    <div class="card glass">
+                        <h2>Orientation</h2>
+                        <div class="metric-row">
+                            <div class="metric">
+                                <span class="label">Pitch</span>
+                                <span class="val" id="val-pitch">0.00</span>
+                            </div>
+                            <div class="metric">
+                                <span class="label">Roll</span>
+                                <span class="val" id="val-roll">0.00</span>
+                            </div>
+                            <div class="metric">
+                                <span class="label">Yaw</span>
+                                <span class="val" id="val-yaw">0.00</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Motor Simulation (2DOF + Sway) -->
+                    <div class="card glass full-width">
+                        <div class="sim-header">
+                            <h2>Motor Output Simulation</h2>
+                            <div class="pid-controls">
+                                <div class="input-group">
+                                    <label>P</label>
+                                    <input type="number" id="input-p" value="1.5" step="0.1">
+                                </div>
+                                <div class="input-group">
+                                    <label>I</label>
+                                    <input type="number" id="input-i" value="0.0" step="0.1">
+                                </div>
+                                <div class="input-group">
+                                    <label>D</label>
+                                    <input type="number" id="input-d" value="0.2" step="0.1">
+                                </div>
+                                <div class="input-group">
+                                    <label>Gain</label>
+                                    <input type="number" id="input-gain" value="1.0" step="0.1">
+                                </div>
+                                <div class="input-group" style="flex-direction: row; align-items: center; gap: 0.5rem; margin-left: 1rem;">
+                                    <input type="checkbox" id="toggle-autoscale" checked style="width: 16px; height: 16px;">
+                                    <label for="toggle-autoscale" style="margin: 0; cursor: pointer;">Autoscale</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="canvas-container">
+                            <canvas id="motorPlot"></canvas>
+                            <div class="canvas-overlay-labels">
+                                <span style="color: #ff3366;">Motor 1 (Left)</span>
+                                <span style="color: #00e5ff;">Motor 2 (Right)</span>
+                                <span style="color: #00e676;">Motor 3 (Sway)</span>
+                            </div>
+                        </div>
+                        <div class="metric-row" style="margin-top: 1rem;">
+                            <div class="metric">
+                                <span class="label" style="color: #ff3366;">M1 Target</span>
+                                <span class="val" id="val-m1">0</span>
+                            </div>
+                            <div class="metric">
+                                <span class="label" style="color: #00e5ff;">M2 Target</span>
+                                <span class="val" id="val-m2">0</span>
+                            </div>
+                            <div class="metric">
+                                <span class="label" style="color: #00e676;">M3 Target</span>
+                                <span class="val" id="val-m3">0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- RAW View -->
+            <div id="raw-view" class="view">
+                <div class="card glass full-width">
+                    <div class="raw-header">
+                        <h2>Raw Packet Data</h2>
+                        <span id="raw-stats" class="badge">0 bytes</span>
+                    </div>
+                    <pre id="raw-output">Awaiting data...</pre>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Include Socket.IO client script -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
