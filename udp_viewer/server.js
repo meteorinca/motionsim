@@ -12,7 +12,20 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// Serve static files from 'public' directory
+// Serve racesync as the primary dashboard
+const racesyncDir = path.join(__dirname, '../racesync');
+const activeRacesyncDir = path.join(__dirname, '../../racesync');
+const fs = require('fs');
+
+if (fs.existsSync(racesyncDir)) {
+    app.use(express.static(racesyncDir));
+} else if (fs.existsSync(activeRacesyncDir)) {
+    app.use(express.static(activeRacesyncDir));
+}
+
+// Serve legacy raw viewer at /viewer
+app.use('/viewer', express.static(path.join(__dirname, 'public')));
+// Fallback static to public if racesync not matched
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Setup UDP Socket
