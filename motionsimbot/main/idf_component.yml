@@ -1,0 +1,5 @@
+## ESP-IDF Component Manager manifest
+dependencies:
+  idf:
+    version: '>=4.1.0'
+  espressif/mdns: '*'
