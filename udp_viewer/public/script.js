@@ -62,105 +62,128 @@ socket.on('disconnect', () => {
     statusText.textContent = 'Disconnected from Backend';
 });
 
-// Helper to read float32 from byte array
-function readFloatLE(data, offset) {
-    if (offset + 4 > data.length) return 0;
-    const buffer = new ArrayBuffer(4);
-    const view = new DataView(buffer);
-    data.slice(offset, offset + 4).forEach((b, i) => view.setUint8(i, b));
-    return view.getFloat32(0, true);
+// Helper to extract zero-copy DataView from ArrayBuffer, Buffer attachment, or Uint8Array
+function getPacketView(packet) {
+    if (!packet) return null;
+    const raw = packet.buffer || packet.data || packet;
+    if (raw instanceof ArrayBuffer) {
+        return new DataView(raw);
+    } else if (ArrayBuffer.isView(raw)) {
+        return new DataView(raw.buffer, raw.byteOffset, raw.byteLength);
+    } else if (Array.isArray(raw)) {
+        const u8 = new Uint8Array(raw);
+        return new DataView(u8.buffer);
+    }
+    return null;
 }
 
-// Telemetry Event
+// Telemetry Event (Zero-Copy Non-Blocking)
 socket.on('telemetry', (packet) => {
-    const data = packet.data; // Array of bytes
-    
+    const view = getPacketView(packet);
+    if (!view) return;
+
     // Update RAW view if active
     if (isRawView) {
-        rawStats.textContent = `${packet.size} bytes from ${packet.address}:${packet.port}`;
-        // Hex dump
+        rawStats.textContent = `${view.byteLength} bytes from ${packet.address || 'local'}:${packet.port || 20777}`;
         let hex = '';
-        for (let i = 0; i < data.length; i++) {
-            hex += data[i].toString(16).padStart(2, '0') + ' ';
+        const u8 = new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
+        for (let i = 0; i < u8.length; i++) {
+            hex += u8[i].toString(16).padStart(2, '0') + ' ';
             if ((i + 1) % 16 === 0) hex += '\n';
         }
         rawOutput.textContent = hex;
         return;
     }
 
-    // Parse Extradata=3 (Common Codemasters Format)
-    // 264 bytes total usually, containing 66 32-bit floats
-    if (data.length >= 264) {
-        
-        // Speed (usually offset 7, which is byte 28)
-        const speedMS = readFloatLE(data, 28);
+    // Parse Extradata=3 (Common Codemasters Format, 256+ bytes, 64+ floats)
+    if (view.byteLength >= 256) {
+        // Speed (byte 28)
+        const speedMS = view.getFloat32(28, true);
         const speedKMH = Math.max(0, speedMS * 3.6);
         valSpeed.textContent = speedKMH.toFixed(0);
 
-        // Gear (offset 33, byte 132) -> float representing gear (0 = R, 1 = N, 2 = 1, etc.)
-        const gearFloat = readFloatLE(data, 132);
+        // Gear (byte 132)
+        const gearFloat = view.getFloat32(132, true);
         let gearStr = "N";
         if (gearFloat === 0) gearStr = "R";
         else if (gearFloat > 1) gearStr = Math.round(gearFloat - 1).toString();
         valGear.textContent = gearStr;
 
-        // RPM (offset 37, byte 148 * 10 is typical in DR2)
-        const rpm = readFloatLE(data, 148) * 10;
+        // RPM (byte 148)
+        const rpm = (view.byteLength >= 152) ? view.getFloat32(148, true) * 10 : 0;
         valRpm.textContent = rpm.toFixed(0);
         let rpmPct = Math.min(100, Math.max(0, (rpm / MAX_RPM) * 100));
         barRpm.style.width = `${rpmPct}%`;
 
-        // G-Forces / Accel (Offsets vary by game, DR2 uses 30,31,32 or 39,40,41)
-        // Let's read Acceleration X, Y, Z (offsets 30, 31, 32 -> bytes 120, 124, 128)
-        const sway = readFloatLE(data, 120);
-        const heave = readFloatLE(data, 124);
-        const surge = readFloatLE(data, 128);
+        // Acceleration / G-Forces (bytes 120, 124, 128)
+        const sway = view.getFloat32(120, true);
+        const heave = view.getFloat32(124, true);
+        const surge = view.getFloat32(128, true);
         
         valSway.textContent = sway.toFixed(2);
         valHeave.textContent = heave.toFixed(2);
         valSurge.textContent = surge.toFixed(2);
 
         // Update G-Dot
-        // Map +/- 2G to +/- 50%
         const maxG = 2.0;
         let dotX = (sway / maxG) * 50 + 50;
         let dotY = (surge / maxG) * 50 + 50;
-        // Clamp
         dotX = Math.max(0, Math.min(100, dotX));
         dotY = Math.max(0, Math.min(100, dotY));
         gDot.style.left = `${dotX}%`;
         gDot.style.top = `${dotY}%`;
 
-        // Suspension Position (offsets 17, 18, 19, 20 -> bytes 68, 72, 76, 80)
-        const susp_rl = readFloatLE(data, 68);
-        const susp_rr = readFloatLE(data, 72);
-        const susp_fl = readFloatLE(data, 76);
-        const susp_fr = readFloatLE(data, 80);
+        // Suspension Positions (RL:68, RR:72, FL:76, FR:80)
+        const susp_rl = view.getFloat32(68, true);
+        const susp_rr = view.getFloat32(72, true);
+        const susp_fl = view.getFloat32(76, true);
+        const susp_fr = view.getFloat32(80, true);
 
         valSuspFL.textContent = susp_fl.toFixed(2);
         valSuspFR.textContent = susp_fr.toFixed(2);
         valSuspRL.textContent = susp_rl.toFixed(2);
         valSuspRR.textContent = susp_rr.toFixed(2);
 
-        // Scale 0-100% (assuming max travel ~ 0.5m)
         const maxSusp = 0.5;
         suspFL.style.height = `${Math.min(100, (susp_fl / maxSusp) * 100)}%`;
         suspFR.style.height = `${Math.min(100, (susp_fr / maxSusp) * 100)}%`;
         suspRL.style.height = `${Math.min(100, (susp_rl / maxSusp) * 100)}%`;
         suspRR.style.height = `${Math.min(100, (susp_rr / maxSusp) * 100)}%`;
 
-        // Pitch, Roll, Yaw (offsets 14, 15, 16 -> bytes 56, 60, 64) OR Rotation
-        // Depending on DR2 specifics, we'll try to read typical offsets
-        const pitch = readFloatLE(data, 56);
-        const roll = readFloatLE(data, 60);
-        const yaw = readFloatLE(data, 64);
+        // Pitch, Roll, Yaw (bytes 56, 60, 64)
+        const pitch = view.getFloat32(56, true);
+        const roll = view.getFloat32(60, true);
+        const yaw = view.getFloat32(64, true);
         
         valPitch.textContent = pitch.toFixed(2);
         valRoll.textContent = roll.toFixed(2);
         valYaw.textContent = yaw.toFixed(2);
 
+        // Motion Motor Actuator calculation
+        const gain = parseFloat(inGain.value) || 1.0;
+        let m1_current = (pitch + roll) * gain;
+        let m2_current = (pitch - roll) * gain;
+        let m3_current = sway * gain;
+
+        if (!toggleAutoscale.checked) {
+            m1_current = Math.max(-10, Math.min(10, m1_current));
+            m2_current = Math.max(-10, Math.min(10, m2_current));
+            m3_current = Math.max(-10, Math.min(10, m3_current));
+        }
+
+        histM1.push(m1_current);
+        histM2.push(m2_current);
+        histM3.push(m3_current);
+
+        if (histM1.length > MAX_HISTORY) histM1.shift();
+        if (histM2.length > MAX_HISTORY) histM2.shift();
+        if (histM3.length > MAX_HISTORY) histM3.shift();
+
+        valM1.textContent = m1_current.toFixed(2);
+        valM2.textContent = m2_current.toFixed(2);
+        valM3.textContent = m3_current.toFixed(2);
+
     } else {
-        // Less than 264 bytes, probably extradata=0 or wrong format
         valSpeed.textContent = "ERR";
     }
 });
@@ -216,37 +239,53 @@ function drawPlot() {
         currentScale = (cy * 0.9) / maxVal;
     }
 
-    // Helper to draw a glowing history line
+    // Helper to draw a glowing history line with fast GPU alpha layering
     function drawHistoryLine(history, color) {
         if (history.length === 0) return;
-        
+        const stepX = canvas.width / MAX_HISTORY;
+        const startX = canvas.width - (history.length * stepX);
+
+        // Glow Outline Pass
+        ctx.lineWidth = 4;
         ctx.strokeStyle = color;
-        ctx.lineWidth = 2;
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = color;
+        ctx.globalAlpha = 0.28;
         ctx.lineJoin = 'round';
         ctx.beginPath();
-
-        const stepX = canvas.width / MAX_HISTORY;
         for (let i = 0; i < history.length; i++) {
-            // Right to left scrolling (newest on right)
-            const x = (canvas.width - (history.length * stepX)) + (i * stepX);
+            const x = startX + (i * stepX);
             const y = cy - (history[i] * currentScale);
             if (i === 0) ctx.moveTo(x, y);
             else ctx.lineTo(x, y);
         }
         ctx.stroke();
-        ctx.shadowBlur = 0; // reset
-        
-        // Draw bright dot at the head
-        const lastVal = history[history.length - 1];
-        ctx.fillStyle = '#fff';
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = color;
+
+        // Sharp Core Line Pass
+        ctx.lineWidth = 1.8;
+        ctx.globalAlpha = 1.0;
         ctx.beginPath();
-        ctx.arc(canvas.width, cy - (lastVal * currentScale), 4, 0, Math.PI*2);
+        for (let i = 0; i < history.length; i++) {
+            const x = startX + (i * stepX);
+            const y = cy - (history[i] * currentScale);
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+        
+        // Draw head dot
+        const lastVal = history[history.length - 1];
+        const headY = cy - (lastVal * currentScale);
+
+        ctx.globalAlpha = 0.4;
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(canvas.width, headY, 6, 0, Math.PI * 2);
         ctx.fill();
-        ctx.shadowBlur = 0;
+
+        ctx.globalAlpha = 1.0;
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(canvas.width, headY, 2.5, 0, Math.PI * 2);
+        ctx.fill();
     }
 
     drawHistoryLine(histM1, '#ff3366');
@@ -256,42 +295,3 @@ function drawPlot() {
     requestAnimationFrame(drawPlot);
 }
 drawPlot();
-
-// Hook into telemetry to calculate motor values and push to history
-socket.on('telemetry', (packet) => {
-    if (packet.data.length < 264) return;
-    const data = packet.data;
-    
-    const pitch = readFloatLE(data, 56);
-    const roll = readFloatLE(data, 60);
-    // Use Sway (accel X) for the 3rd DOF
-    const sway = readFloatLE(data, 120); 
-    
-    const gain = parseFloat(inGain.value) || 1.0;
-
-    // Simulate 2DOF (Pitch + Roll mix) and 1DOF (Sway)
-    let m1_current = (pitch + roll) * gain;
-    let m2_current = (pitch - roll) * gain;
-    let m3_current = sway * gain;
-
-    // Limit if autoscale is off, otherwise let it go wild
-    if (!toggleAutoscale.checked) {
-        m1_current = Math.max(-10, Math.min(10, m1_current));
-        m2_current = Math.max(-10, Math.min(10, m2_current));
-        m3_current = Math.max(-10, Math.min(10, m3_current));
-    }
-
-    // Push to history
-    histM1.push(m1_current);
-    histM2.push(m2_current);
-    histM3.push(m3_current);
-
-    if (histM1.length > MAX_HISTORY) histM1.shift();
-    if (histM2.length > MAX_HISTORY) histM2.shift();
-    if (histM3.length > MAX_HISTORY) histM3.shift();
-
-    // Update Text
-    valM1.textContent = m1_current.toFixed(2);
-    valM2.textContent = m2_current.toFixed(2);
-    valM3.textContent = m3_current.toFixed(2);
-});

@@ -37,14 +37,14 @@ udpServer.on('error', (err) => {
 });
 
 udpServer.on('message', (msg, rinfo) => {
-    // msg is a Buffer. Convert to array to send via JSON over WebSockets
-    // We send raw bytes so the frontend can parse or display RAW as requested.
+    // Zero-copy binary transmission: send raw Buffer directly over WebSocket
+    // Socket.IO sends the buffer as a raw binary attachment (0 JSON stringification).
     io.emit('telemetry', {
         address: rinfo.address,
         port: rinfo.port,
         size: msg.length,
         timestamp: Date.now(),
-        data: Array.from(msg)
+        buffer: msg
     });
 });
 
