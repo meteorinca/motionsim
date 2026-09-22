@@ -49,6 +49,8 @@ static esp_err_t root_get_handler(httpd_req_t *req) {
     return ESP_OK;
 }
 
+#include "as5600.h"
+
 static esp_err_t api_stats_handler(httpd_req_t *req) {
     httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
     httpd_resp_set_type(req, "application/json");
@@ -56,7 +58,10 @@ static esp_err_t api_stats_handler(httpd_req_t *req) {
     motion_stats_t stats = motion_udp_get_stats();
     pid_params_t pid = pid_get_params();
 
-    char resp[768];
+    as5600_telemetry_t as_telem = {0};
+    as5600_read_telemetry(0, &as_telem);
+
+    char resp[1024];
     int len = snprintf(resp, sizeof(resp),
         "{"
         "\"m1\":{\"target\":%.2f,\"actual\":%.2f,\"error\":%.2f,\"duty\":%d},"
@@ -64,6 +69,20 @@ static esp_err_t api_stats_handler(httpd_req_t *req) {
         "\"m3\":{\"target\":%.2f,\"actual\":%.2f,\"error\":%.2f,\"duty\":%d},"
         "\"pid\":{\"kp\":%.2f,\"ki\":%.2f,\"kd\":%.2f},"
         "\"estop\":%s,"
+        "\"armed\":%s,"
+        "\"control_mode\":%d,"
+        "\"as5600\":{"
+            "\"detected\":%s,"
+            "\"magnet_ok\":%s,"
+            "\"magnet_too_weak\":%s,"
+            "\"magnet_too_strong\":%s,"
+            "\"agc\":%d,"
+            "\"magnitude\":%d,"
+            "\"raw\":%d,"
+            "\"raw_deg\":%.2f,"
+            "\"cal_deg\":%.2f,"
+            "\"zero_offset\":%.2f"
+        "},"
         "\"pkt_rate_hz\":%.2f,"
         "\"rx_count\":%ld,"
         "\"lost_count\":%ld,"
@@ -76,6 +95,18 @@ static esp_err_t api_stats_handler(httpd_req_t *req) {
         pid_get_target_angle(3), hall_read_angle(3), pid_get_error(3), motor_get_duty(3),
         pid.kp, pid.ki, pid.kd,
         motor_get_estop() ? "true" : "false",
+        motor_is_armed() ? "true" : "false",
+        (int)pid_get_mode(),
+        as_telem.detected ? "true" : "false",
+        as_telem.magnet_detected ? "true" : "false",
+        as_telem.magnet_too_weak ? "true" : "false",
+        as_telem.magnet_too_strong ? "true" : "false",
+        as_telem.agc,
+        as_telem.magnitude,
+        as_telem.raw_counts,
+        as_telem.raw_deg,
+        as_telem.cal_deg,
+        as_telem.zero_offset,
         stats.pkt_rate_hz, (long)stats.rx_count, (long)stats.lost_count,
         wifi_mgr_get_rssi(), wifi_mgr_get_ip(), FW_VERSION);
 
@@ -121,6 +152,41 @@ static esp_err_t api_motor_handler(httpd_req_t *req) {
             int id = atoi(val_id);
             int duty = atoi(val_duty);
             motor_set_duty(id, duty);
+        }
+    }
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+    httpd_resp_sendstr(req, "{\"ok\":true}");
+    return ESP_OK;
+}
+
+static esp_err_t api_arm_handler(httpd_req_t *req) {
+    char buf[64];
+    if (httpd_req_get_url_query_str(req, buf, sizeof(buf)) == ESP_OK) {
+        char val[16];
+        if (httpd_query_key_value(buf, "state", val, sizeof(val)) == ESP_OK) {
+            bool state = (atoi(val) != 0);
+            motor_arm(state);
+        }
+    }
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+    httpd_resp_sendstr(req, "{\"ok\":true}");
+    return ESP_OK;
+}
+
+static esp_err_t api_test_step_handler(httpd_req_t *req) {
+    char buf[64];
+    if (httpd_req_get_url_query_str(req, buf, sizeof(buf)) == ESP_OK) {
+        char val[32];
+        if (httpd_query_key_value(buf, "target", val, sizeof(val)) == ESP_OK) {
+            float target = atof(val);
+            pid_set_mode(PID_MODE_STEP_TEST);
+            pid_set_target_angle(1, target);
+        } else if (httpd_query_key_value(buf, "duty", val, sizeof(val)) == ESP_OK) {
+            int duty = atoi(val);
+            pid_set_manual_duty(1, (int16_t)duty);
+        } else if (httpd_query_key_value(buf, "stop", val, sizeof(val)) == ESP_OK) {
+            pid_set_mode(PID_MODE_STEP_TEST);
+            motor_stop_all();
         }
     }
     httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
@@ -196,7 +262,8 @@ void webserver_start(void) {
         httpd_uri_t u_pid = { .uri = "/api/pid", .method = HTTP_GET, .handler = api_pid_handler };
         httpd_uri_t u_cal = { .uri = "/api/calibrate", .method = HTTP_POST, .handler = api_calibrate_handler };
         httpd_uri_t u_motor = { .uri = "/api/motor", .method = HTTP_GET, .handler = api_motor_handler };
-        httpd_uri_t u_estop = { .uri = "/api/estop", .method = HTTP_POST, .handler = api_estop_handler };
+        httpd_uri_t u_arm = { .uri = "/api/arm", .method = HTTP_POST, .handler = api_arm_handler };
+        httpd_uri_t u_test = { .uri = "/api/test/step", .method = HTTP_POST, .handler = api_test_step_handler };
         httpd_uri_t u_ota = { .uri = "/ota", .method = HTTP_POST, .handler = ota_post_handler };
         httpd_uri_t u_opt = { .uri = "/*", .method = HTTP_OPTIONS, .handler = cors_options_handler };
 
@@ -205,6 +272,8 @@ void webserver_start(void) {
         httpd_register_uri_handler(s_server, &u_pid);
         httpd_register_uri_handler(s_server, &u_cal);
         httpd_register_uri_handler(s_server, &u_motor);
+        httpd_register_uri_handler(s_server, &u_arm);
+        httpd_register_uri_handler(s_server, &u_test);
         httpd_register_uri_handler(s_server, &u_estop);
         httpd_register_uri_handler(s_server, &u_ota);
         httpd_register_uri_handler(s_server, &u_opt);

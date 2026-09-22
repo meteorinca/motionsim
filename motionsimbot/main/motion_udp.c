@@ -80,6 +80,7 @@ static void motion_rx_task(void *pvParameters) {
             xSemaphoreGive(s_mutex);
 
             // Update PID target angles (deg * 10 converted to float degrees)
+            pid_set_mode(PID_MODE_FOLLOW);
             pid_set_target_angle(1, (float)cmd.target_deg1 / 10.0f);
             pid_set_target_angle(2, (float)cmd.target_deg2 / 10.0f);
             pid_set_target_angle(3, (float)cmd.target_deg3 / 10.0f);

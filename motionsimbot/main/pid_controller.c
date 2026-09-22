@@ -15,10 +15,19 @@ static pid_params_t s_params = {
     .integral_max = 300.0f
 };
 
+static pid_control_mode_t s_control_mode = PID_MODE_STEP_TEST; // Default to step test mode until UDP commands arrive
 static float s_targets[JOINT_COUNT] = {180.0f, 180.0f, 180.0f};
 static float s_errors[JOINT_COUNT] = {0.0f};
 static float s_integrals[JOINT_COUNT] = {0.0f};
 static float s_last_errors[JOINT_COUNT] = {0.0f};
+static int16_t s_manual_duties[JOINT_COUNT] = {0};
+
+void pid_reset_integrals(void) {
+    for (int i = 0; i < JOINT_COUNT; i++) {
+        s_integrals[i] = 0.0f;
+        s_last_errors[i] = 0.0f;
+    }
+}
 
 static void pid_task(void *pvParameters) {
     TickType_t last_wake = xTaskGetTickCount();
@@ -27,11 +36,7 @@ static void pid_task(void *pvParameters) {
     while (1) {
         vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(1)); // Precise 1 kHz timing
 
-        if (motor_get_estop()) {
-            motor_stop_all();
-            continue;
-        }
-
+        // Always read sensors so telemetry is active in all states
         for (int i = 0; i < JOINT_COUNT; i++) {
             int motor_id = i + 1;
             float actual_angle = hall_read_angle(motor_id);
@@ -41,8 +46,27 @@ static void pid_task(void *pvParameters) {
             // Shortest angle wrap around (-180 to +180)
             while (error > 180.0f)  error -= 360.0f;
             while (error < -180.0f) error += 360.0f;
-
             s_errors[i] = error;
+        }
+
+        // Safety Interlock: if motors are not armed or E-Stop is active, keep motors stopped
+        if (!motor_is_armed() || motor_get_estop()) {
+            motor_stop_all();
+            pid_reset_integrals();
+            continue;
+        }
+
+        if (s_control_mode == PID_MODE_MANUAL_DUTY) {
+            for (int i = 0; i < JOINT_COUNT; i++) {
+                motor_set_duty(i + 1, s_manual_duties[i]);
+            }
+            continue;
+        }
+
+        // Closed-loop PID control (Step Test or UDP follow)
+        for (int i = 0; i < JOINT_COUNT; i++) {
+            int motor_id = i + 1;
+            float error = s_errors[i];
 
             // Integral accumulator with anti-windup clamp
             s_integrals[i] += error * dt;
@@ -94,4 +118,19 @@ void pid_set_params(float kp, float ki, float kd) {
 
 pid_params_t pid_get_params(void) {
     return s_params;
+}
+
+void pid_set_mode(pid_control_mode_t mode) {
+    s_control_mode = mode;
+    pid_reset_integrals();
+}
+
+pid_control_mode_t pid_get_mode(void) {
+    return s_control_mode;
+}
+
+void pid_set_manual_duty(int joint_id, int16_t duty) {
+    if (joint_id < 1 || joint_id > JOINT_COUNT) return;
+    s_manual_duties[joint_id - 1] = duty;
+    s_control_mode = PID_MODE_MANUAL_DUTY;
 }

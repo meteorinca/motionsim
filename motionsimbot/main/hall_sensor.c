@@ -1,4 +1,5 @@
 #include "hall_sensor.h"
+#include "as5600.h"
 #include "config.h"
 #include "esp_adc/adc_oneshot.h"
 #include "nvs_flash.h"
@@ -49,26 +50,36 @@ static void save_calibration(int idx) {
 }
 
 void hall_sensor_init(void) {
+    // Initialize AS5600 Magnetic Encoder on I2C bus
+    as5600_init();
+
     adc_oneshot_unit_init_cfg_t init_cfg = {
         .unit_id = HALL_ADC_UNIT,
     };
-    ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_cfg, &s_adc_handle));
-
-    adc_oneshot_chan_cfg_t chan_cfg = {
-        .bitwidth = ADC_BITWIDTH_12,
-        .atten    = ADC_ATTEN_DB_12, // 0 - 3.3V range
-    };
-
-    for (int i = 0; i < JOINT_COUNT; i++) {
-        ESP_ERROR_CHECK(adc_oneshot_config_channel(s_adc_handle, s_channels[i], &chan_cfg));
+    esp_err_t err = adc_oneshot_new_unit(&init_cfg, &s_adc_handle);
+    if (err == ESP_OK) {
+        adc_oneshot_chan_cfg_t chan_cfg = {
+            .bitwidth = ADC_BITWIDTH_12,
+            .atten    = ADC_ATTEN_DB_12, // 0 - 3.3V range
+        };
+        for (int i = 0; i < JOINT_COUNT; i++) {
+            adc_oneshot_config_channel(s_adc_handle, s_channels[i], &chan_cfg);
+        }
+    } else {
+        ESP_LOGW(TAG, "ADC unit init failed or already initialized: %s", esp_err_to_name(err));
     }
 
     load_calibration();
-    ESP_LOGI(TAG, "12-Bit Hall Angle Sensors initialized (Resolution: %.5f deg / count)", HALL_RESOLUTION_DEG);
+    ESP_LOGI(TAG, "Hall Sensors initialized (AS5600 primary on Joint 1, ADC resolution: %.5f deg/count)",
+             HALL_RESOLUTION_DEG);
 }
 
 uint16_t hall_read_raw(int joint_id) {
-    if (joint_id < 1 || joint_id > JOINT_COUNT || !s_adc_handle) return 0;
+    if (joint_id < 1 || joint_id > JOINT_COUNT) return 0;
+    if (joint_id == 1 && as5600_is_detected(0)) {
+        return as5600_get_raw_counts(0);
+    }
+    if (!s_adc_handle) return 0;
     int raw = 0;
     adc_oneshot_read(s_adc_handle, s_channels[joint_id - 1], &raw);
     return (uint16_t)raw;
@@ -77,6 +88,14 @@ uint16_t hall_read_raw(int joint_id) {
 float hall_read_angle(int joint_id) {
     if (joint_id < 1 || joint_id > JOINT_COUNT) return 0.0f;
     int idx = joint_id - 1;
+
+    // If AS5600 is installed and detected on Joint 1, use high-precision 12-bit digital magnetic reading
+    if (joint_id == 1 && as5600_is_detected(0)) {
+        float as_angle = as5600_get_calibrated_angle(0);
+        // Small EMA filter (alpha = 0.5) to reject magnetic noise
+        s_ema_angles[idx] = (0.5f * as_angle) + (0.5f * s_ema_angles[idx]);
+        return s_ema_angles[idx];
+    }
 
     uint16_t raw = hall_read_raw(joint_id);
     float raw_angle = (float)raw * HALL_RESOLUTION_DEG;
@@ -95,6 +114,12 @@ void hall_calibrate_zero(int joint_id) {
     if (joint_id < 1 || joint_id > JOINT_COUNT) return;
     int idx = joint_id - 1;
 
+    if (joint_id == 1 && as5600_is_detected(0)) {
+        as5600_calibrate_zero(0);
+        s_zero_offsets[0] = as5600_get_zero_offset(0);
+        return;
+    }
+
     uint16_t raw = hall_read_raw(joint_id);
     s_zero_offsets[idx] = (float)raw * HALL_RESOLUTION_DEG;
     save_calibration(idx);
@@ -102,5 +127,8 @@ void hall_calibrate_zero(int joint_id) {
 
 float hall_get_zero_offset(int joint_id) {
     if (joint_id < 1 || joint_id > JOINT_COUNT) return 0.0f;
+    if (joint_id == 1 && as5600_is_detected(0)) {
+        return as5600_get_zero_offset(0);
+    }
     return s_zero_offsets[joint_id - 1];
 }

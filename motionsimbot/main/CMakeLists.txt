@@ -9,6 +9,8 @@ set(COMMON_SRCS
     "ota_mgr.c"
     "timekeep.c"
     "oled.c"
+    "i2c_bus.c"
+    "as5600.c"
     "buzzer.c"
     "led.c"
 )

@@ -14,5 +14,7 @@ void motor_stop_all(void);
 void motor_set_estop(bool estop);
 bool motor_get_estop(void);
 int16_t motor_get_duty(int motor_id);
+void motor_arm(bool arm);
+bool motor_is_armed(void);
 
 #endif // MOTOR_DRIVER_H

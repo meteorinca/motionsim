@@ -127,34 +127,7 @@ static void oled_task(void *arg) {
 }
 
 void oled_init(void) {
-    i2c_master_bus_config_t bus_cfg = {
-        .i2c_port = I2C_NUM_0,
-        .sda_io_num = OLED_SDA_PIN,
-        .scl_io_num = OLED_SCL_PIN,
-        .clk_source = I2C_CLK_SRC_DEFAULT,
-        .glitch_ignore_cnt = 7,
-        .flags.enable_internal_pullup = true,
-    };
-
-    i2c_master_bus_handle_t bus_handle;
-    ESP_ERROR_CHECK(i2c_new_master_bus(&bus_cfg, &bus_handle));
-
-    i2c_device_config_t dev_cfg = {
-        .dev_addr_length = I2C_ADDR_BIT_LEN_7,
-        .device_address = OLED_ADDR,
-        .scl_speed_hz = 400000,
-    };
-
-    ESP_ERROR_CHECK(i2c_master_bus_add_device(bus_handle, &dev_cfg, &s_oled_dev));
-
-    ssd1306_init_sequence();
-    fb_clear();
-    fb_draw_string(10, 24, "MOTIONSIMBOT", true);
-    fb_draw_string(24, 38, "BOOTING", true);
-    fb_flush();
-
-    xTaskCreate(oled_task, "oled_render", 3072, NULL, 5, NULL);
-    ESP_LOGI(TAG, "OLED Display initialized");
+    ESP_LOGI(TAG, "OLED display disabled (focusing on AS5600 encoder and WebUI)");
 }
 
 void oled_set_mode(oled_mode_t mode) {

@@ -44,9 +44,15 @@
 #define HALL_JOINT2_ADC_CH  ADC_CHANNEL_1
 #define HALL_JOINT3_ADC_CH  ADC_CHANNEL_2
 
+// I2C bus pins (shared by AS5600 encoder and display).
+#define I2C_SDA_PIN         8
+#define I2C_SCL_PIN         9
+#define AS5600_ADDR         0x36
+#define TCA9548A_ADDR       0x70
+
 // SSD1306 I2C display.
-#define OLED_SDA_PIN        8
-#define OLED_SCL_PIN        9
+#define OLED_SDA_PIN        I2C_SDA_PIN
+#define OLED_SCL_PIN        I2C_SCL_PIN
 #define OLED_ADDR           0x3C
 
 #define MAX_SCHEDULED_ACTIONS  8

@@ -4,6 +4,10 @@ This comprehensive guide walks through setting up the MotionSim 3DOF motion simu
 
 ---
 
+NOTE: For esp-idf 5.5 we are using the Microsoft PowerShell profile. ONLY ON WINDOWS MACHINE:
+
+powershell -NoProfile -ExecutionPolicy Bypass -Command ". 'C:\Espressif\tools\Microsoft.v5.5.4.PowerShell_profile.ps1'; idf.py --version"
+
 ## 📐 System Architecture Overview
 
 ```mermaid

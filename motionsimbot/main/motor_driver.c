@@ -9,6 +9,7 @@
 #define PWM_FREQ_HZ 20000 // 20 kHz for silent operation
 
 static bool s_estop = false;
+static bool s_armed = false;
 static int16_t s_current_duties[MOTOR_COUNT] = {0};
 
 // LEDC Channels for 3 motors (2 channels per motor = 6 channels)
@@ -27,14 +28,15 @@ static const gpio_num_t s_lpwm_gpios[MOTOR_COUNT] = {
 };
 
 void motor_driver_init(void) {
-    // Enable GPIO
+    // Enable GPIO (Hardware E-Stop / Shared IBT-2 R_EN + L_EN)
     gpio_config_t en_conf = {
         .pin_bit_mask = (1ULL << MOTOR_ENABLE_GPIO),
         .mode = GPIO_MODE_OUTPUT,
         .pull_down_en = GPIO_PULLDOWN_ENABLE,
     };
     gpio_config(&en_conf);
-    gpio_set_level(MOTOR_ENABLE_GPIO, 1); // Enable IBT-2 drivers by default
+    gpio_set_level(MOTOR_ENABLE_GPIO, 0); // Boot in SAFE DISARMED state (motors cannot move)
+    s_armed = false;
 
     // Timer Config (20 kHz, 10-bit resolution = 0..1023)
     ledc_timer_config_t timer_cfg = {
@@ -79,7 +81,8 @@ void motor_set_duty(int motor_id, int16_t duty) {
     if (motor_id < 1 || motor_id > MOTOR_COUNT) return;
     int idx = motor_id - 1;
 
-    if (s_estop) {
+    // Safety Interlock: disarmed or E-stop forces duty to 0
+    if (!s_armed || s_estop) {
         duty = 0;
     }
 
@@ -113,14 +116,36 @@ void motor_stop_all(void) {
     }
 }
 
+void motor_arm(bool arm) {
+    if (arm) {
+        if (s_estop) {
+            ESP_LOGW(TAG, "Cannot ARM motors: Emergency Stop is active!");
+            return;
+        }
+        s_armed = true;
+        gpio_set_level(MOTOR_ENABLE_GPIO, 1);
+        ESP_LOGI(TAG, "MOTORS ARMED: IBT-2 driver enable active (GPIO %d = 1)", MOTOR_ENABLE_GPIO);
+    } else {
+        s_armed = false;
+        gpio_set_level(MOTOR_ENABLE_GPIO, 0);
+        motor_stop_all();
+        ESP_LOGI(TAG, "MOTORS DISARMED: Safe State (GPIO %d = 0)", MOTOR_ENABLE_GPIO);
+    }
+}
+
+bool motor_is_armed(void) {
+    return s_armed && !s_estop;
+}
+
 void motor_set_estop(bool estop) {
     s_estop = estop;
-    gpio_set_level(MOTOR_ENABLE_GPIO, estop ? 0 : 1);
     if (estop) {
+        s_armed = false;
+        gpio_set_level(MOTOR_ENABLE_GPIO, 0);
         motor_stop_all();
-        ESP_LOGW(TAG, "EMERGENCY STOP ACTIVATED! All motors disabled.");
+        ESP_LOGW(TAG, "EMERGENCY STOP ACTIVATED! All motors disarmed and disabled.");
     } else {
-        ESP_LOGI(TAG, "Emergency Stop Cleared. Motor drivers enabled.");
+        ESP_LOGI(TAG, "Emergency Stop Cleared. Motors remain disarmed until explicitly armed.");
     }
 }
 
