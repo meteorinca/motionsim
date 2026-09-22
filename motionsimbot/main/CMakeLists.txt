@@ -33,5 +33,7 @@ idf_component_register(
                     esp_app_format
                     app_update
                     esp_driver_i2c
+                    esp_driver_rmt
+                    led_strip
                     driver
 )

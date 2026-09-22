@@ -31,10 +31,11 @@ void pid_reset_integrals(void) {
 
 static void pid_task(void *pvParameters) {
     TickType_t last_wake = xTaskGetTickCount();
-    const float dt = 0.001f; // 1 ms loop period (1 kHz)
+    const TickType_t delay_ticks = pdMS_TO_TICKS(1) > 0 ? pdMS_TO_TICKS(1) : 1;
+    const float dt = (float)delay_ticks / (float)configTICK_RATE_HZ;
 
     while (1) {
-        vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(1)); // Precise 1 kHz timing
+        vTaskDelayUntil(&last_wake, delay_ticks);
 
         // Always read sensors so telemetry is active in all states
         for (int i = 0; i < JOINT_COUNT; i++) {

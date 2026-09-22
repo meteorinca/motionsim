@@ -22,9 +22,10 @@
 #define NTP_SERVER          "pool.ntp.org"
 #define TIMEZONE            "EST5EDT,M3.2.0,M11.1.0"
 
-// Status LED: GPIO 48 is used by common ESP32-S3 DevKit boards.
+// Status LED: GPIO 48 WS2812 / NeoPixel on common ESP32-S3 DevKit boards.
 #define LED_GPIO            GPIO_NUM_48
 #define LED_ACTIVE_LOW      0
+#define BOARD_HAS_NEOPIXEL  1
 
 // Physical emergency-stop button: active low with internal pull-up.
 #define ESTOP_BTN_GPIO      GPIO_NUM_18

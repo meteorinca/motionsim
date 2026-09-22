@@ -264,6 +264,7 @@ void webserver_start(void) {
         httpd_uri_t u_motor = { .uri = "/api/motor", .method = HTTP_GET, .handler = api_motor_handler };
         httpd_uri_t u_arm = { .uri = "/api/arm", .method = HTTP_POST, .handler = api_arm_handler };
         httpd_uri_t u_test = { .uri = "/api/test/step", .method = HTTP_POST, .handler = api_test_step_handler };
+        httpd_uri_t u_estop = { .uri = "/api/estop", .method = HTTP_POST, .handler = api_estop_handler };
         httpd_uri_t u_ota = { .uri = "/ota", .method = HTTP_POST, .handler = ota_post_handler };
         httpd_uri_t u_opt = { .uri = "/*", .method = HTTP_OPTIONS, .handler = cors_options_handler };
 
