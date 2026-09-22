@@ -11,6 +11,7 @@ extern "C" {
 esp_err_t i2c_bus_init(void);
 i2c_master_bus_handle_t i2c_bus_get_handle(void);
 esp_err_t i2c_bus_probe(uint16_t address);
+void i2c_bus_scan(void);
 
 #ifdef __cplusplus
 }

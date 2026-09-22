@@ -1,12 +1,16 @@
 # 🏎️ MotionSim Setup, Telemetry & Hardware Guide
 
-This comprehensive guide walks through setting up the MotionSim 3DOF motion simulator rig, configuring DiRT Rally telemetry output, launching the **Local Web Telemetry Dashboard** on `http://localhost:3103/`, connecting the **Wired ESP32-S3** motion controller, and running diagnostics and calibration.
+This comprehensive guide walks through setting up the MotionSim 3DOF motion simulator rig, configuring DiRT Rally telemetry output, launching the **Local Web Telemetry Dashboard** on `http://localhost:3103/`, connecting the **ESP32-S3 MotionSimBot** motion controller, using the embedded **MyBot-style WebUI & Oscilloscope** on `http://motionsimbot1.local/`, and running diagnostics, closed-loop PID commissioning, and wireless OTA updates.
 
 ---
 
-NOTE: For esp-idf 5.5 we are using the Microsoft PowerShell profile. ONLY ON WINDOWS MACHINE:
+> [!NOTE]
+> **ESP-IDF v5.5 Build Environment on Windows:**
+> ```powershell
+> powershell -NoProfile -ExecutionPolicy Bypass -Command ". 'C:\Espressif\tools\Microsoft.v5.5.4.PowerShell_profile.ps1'; idf.py --version"
+> ```
 
-powershell -NoProfile -ExecutionPolicy Bypass -Command ". 'C:\Espressif\tools\Microsoft.v5.5.4.PowerShell_profile.ps1'; idf.py --version"
+---
 
 ## 📐 System Architecture Overview
 
@@ -14,42 +18,49 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ". 'C:\Espressif\tools\Mi
 flowchart LR
     subgraph PC ["Gaming PC"]
         DR["DiRT Rally 2.0<br/>(Physics Engine)"]
-        UDP["UDP Port 20777<br/>(127.0.0.1)"]
+        UDP["UDP Port 20777<br/>(Broadcast / 60 Hz)"]
         UI["Web Dashboard<br/>http://localhost:3103"]
-        BRIDGE["PC Bridge / Daemon"]
-    end
-
-    subgraph Wired ["Wired Connection (USB / Serial / CDC)"]
-        USB["Direct USB-C Cable<br/>(Low-Latency Serial / Native CDC)"]
     end
 
     subgraph Hardware ["MotionSim Rig Hardware"]
-        ESP["ESP32-S3 Controller<br/>(PID Loop @ 500Hz)"]
-        IBT["3x IBT-2 Motor Drivers<br/>(BTS7960 H-Bridges)"]
+        ESP["ESP32-S3 Controller<br/>(100 Hz PID Loop + WebUI)"]
+        IBT["3x IBT-2 Drivers<br/>(BTS7960 43A)"]
         MOTORS["3x 24V Motors<br/>(Roll, Pitch, Heave)"]
-        SENSORS["3x 12-Bit Hall Sensors<br/>(Position Feedback)"]
-        OLED["SSD1306 OLED Display<br/>(Live Diagnostics)"]
-        ESTOP["Physical E-Stop Button"]
+        SENSORS["AS5600 Encoders<br/>(Digital 12-Bit I2C)"]
+        OLED["SSD1306 OLED<br/>(Live Diagnostics)"]
+        ESTOP["Physical E-Stop + Soft E-Stop"]
     end
 
     DR -->|Telemetry Packets| UDP
     UDP --> UI
-    UDP --> BRIDGE
-    BRIDGE -->|Binary Motion Commands| USB
-    USB --> ESP
+    UDP -->|WiFi / Ethernet| ESP
     ESP --> IBT --> MOTORS
     MOTORS -.-> SENSORS -.-> ESP
     ESP --> OLED
     ESTOP --> ESP
 ```
 
-> [!TIP]
-> **Why Wired ESP32-S3 over Wireless?**
-> We recommend and prioritize a **wired USB-C / high-speed Serial connection** (or wired Ethernet) directly between the PC and ESP32-S3. Wired communication guarantees deterministic, sub-millisecond latency (<1 ms), eliminates WiFi jitter/packet drops, prevents RF interference from 24V motor PWM switching noise, and avoids router/network congestion.
+---
+
+## 🌐 1. MotionSimBot Embedded WebUI (`http://motionsimbot1.local/`)
+
+The ESP32-S3 controller serves an embedded, high-performance WebUI ported from the MyBot robotics platform:
+
+* **Synchronized System Time:** Synced via NTP and browser clock with millisecond precision (`/time` and `/sync_time`).
+* **Hero Safety Supervisor:** Massive pulsing Emergency Stop button (`🚨 EMERGENCY STOP`), safe ARM/DISARM toggles, and multi-hazard auto E-stop detection with exact trip reasoning.
+* **Live Oscilloscope (Pretty Plots):** Real-time dual-trace HTML5 canvas chart running at 60 FPS plotting:
+  * **Cyan line:** Target Angle ($\theta_\text{target}$)
+  * **Purple line:** Actual AS5600 Angle ($\theta_\text{actual}$)
+  * **Amber shaded band:** Motor PWM Duty ($D_\text{pwm}$)
+* **Interactive Step Testing:** Quick `+5°`, `-5°`, `+10°`, `-10°`, `180° Center` buttons directly above the plot.
+* **Direct Angle Command:** Input any desired angle and click **Go to Angle** to position the motor in real time (`POST /api/target?joint=1&angle=...`).
+* **Manual Commissioning & Jogging:** Test forward and reverse duty (25%) with 400 ms safety timeout before closing the loop, with software motor polarity inversion toggle saved to flash NVS.
+* **Closed-Loop PD Autocalibration:** One-click **⚡ Autocalibrate PD** routine that executes small step perturbations, measures rise time and overshoot, derives optimal $K_p$ and $K_d$, and saves to flash NVS.
+* **Wireless OTA Firmware Updates:** Drag-and-drop or select any compiled `.bin` firmware file to flash the ESP32-S3 over WiFi with an animated progress bar.
 
 ---
 
-## 🎮 1. DiRT Rally Telemetry Configuration
+## 🎮 2. DiRT Rally Telemetry Configuration
 
 To transmit live physics, G-forces, suspension travel, and vehicle dynamics from DiRT Rally to the MotionSim software, enable the UDP output in the game's configuration file.
 
@@ -60,7 +71,7 @@ To transmit live physics, G-forces, suspension travel, and vehicle dynamics from
    - **DiRT Rally 1:** `Documents\My Games\DiRT Rally\hardwaresettings\hardware_settings_config.xml`
    - **EA SPORTS WRC:** Located in `%LOCALAPPDATA%\WRC\Saved\Config\WindowsNoEditor\`
 
-2. Open `hardware_settings_config.xml` in an editor (e.g. VS Code or Notepad).
+2. Open `hardware_settings_config.xml` in an editor.
 3. Search for the `<motion_platform>` XML block.
 4. Replace or modify the `<udp>` entry as follows:
 
@@ -73,206 +84,74 @@ To transmit live physics, G-forces, suspension travel, and vehicle dynamics from
 </motion_platform>
 ```
 
-### Parameter Reference
-| Attribute | Value | Purpose |
-| :--- | :--- | :--- |
-| `enabled` | `"true"` | Activates game UDP telemetry output. |
-| `extradata` | `"3"` | **Critical:** Sends the full 264-byte Codemasters format containing 66 float32 fields (suspension position, suspension velocity, wheel speed, and G-force vectors). |
-| `ip` | `"127.0.0.1"` | Directs packets to the local PC host loopback interface. |
-| `port` | `"20777"` | The standard Codemasters UDP listening port. |
-| `delay` | `"1"` | Frame delay interval (`1` delivers maximum 60–100 Hz update rate). |
-
-> [!IMPORTANT]
-> Always save the file and restart DiRT Rally if it was running while making these changes.
-
 ---
 
-## 💻 2. Starting the Front-End Telemetry Dashboard (`http://localhost:3103/`)
+## 🔌 3. ESP32-S3 Pinout & Wiring Reference
 
-The MotionSim project includes a real-time web telemetry dashboard located in the `udp_viewer/` directory. It listens for incoming DiRT Rally UDP packets on port `20777` and displays vehicle dynamics on a web interface at **`http://localhost:3103/`**.
-
-```
-motionsim/
-├── udp_viewer/
-│   ├── public/
-│   │   ├── index.html       # Web UI layout & gauge views
-│   │   ├── script.js        # Telemetry parser & Chart.js engine
-│   │   └── style.css        # Glassmorphism dark cyberpunk theme
-│   ├── package.json         # Node.js dependencies
-│   └── server.js            # Express + Socket.IO + UDP listener (Port 3103 / 20777)
-```
-
-### Step 1: Install Dependencies
-Open a PowerShell or Command Prompt terminal in the project directory:
-
-```bash
-cd udp_viewer
-npm install
-```
-
-### Step 2: Launch the Server
-Start the Node.js telemetry server:
-
-```bash
-npm start
-# or:
-node server.js
-```
-
-You will see output confirming both listeners are active:
-```text
-📡 UDP Server listening on port 20777
-🚀 Web Dashboard running at http://localhost:3103
-```
-
-### Step 3: Open the Web UI
-Open your browser and navigate to:
-👉 **`http://localhost:3103/`**
-
-### Dashboard Features & Views
-* **Connection Status Indicator**: Displays real-time connection state (`Listening on UDP 20777` when connected).
-* **Speed & Gear Panel**: Live speedometer in km/h, digital gear readout (R, N, 1–6), and an animated RPM tachometer bar.
-* **3DOF G-Force Visualizer**:
-  * **Sway (X Axis)**: Lateral cornering acceleration ($G_x$).
-  * **Heave (Y Axis)**: Vertical bump & jump acceleration ($G_y$).
-  * **Surge (Z Axis)**: Longitudinal acceleration & braking force ($G_z$).
-  * **G-Force Dot**: Interactive 2D vector indicator plotting active load transfer.
-* **Vehicle Attitude**: Pitch, Roll, and Yaw rotational degrees.
-* **4-Corner Suspension Telemetry**: Live travel, velocity, and tire patch linear speed for Front-Left (FL), Front-Right (FR), Rear-Left (RL), and Rear-Right (RR).
-* **Live RAW Packet Inspector**: Click **"Enable RAW View"** to inspect incoming 264-byte binary payloads, hex dumps, and packet sequence metrics.
-
----
-
-## 🔌 3. Wired ESP32-S3 Hardware Setup & Pinout
-
-For reliable, jitter-free physical motion, we use a **wired USB-C connection** (via high-speed UART or native USB CDC) to connect the Gaming PC to the ESP32-S3 motion controller.
-
-### Hardware Connection Scheme
-```
-[Gaming PC] === USB-C Cable ===> [ESP32-S3 Controller]
-                                         │
-       ┌────────────────┬────────────────┼────────────────┬───────────────┐
-       ▼                ▼                ▼                ▼               ▼
- [IBT-2 Driver 1] [IBT-2 Driver 2] [IBT-2 Driver 3] [Hall Sensors]  [SSD1306 OLED]
- (Roll / FL)      (Pitch / FR)     (Heave / Rear)   (Joint 1, 2, 3) (I2C: SDA/SCL)
-```
-
-### ESP32-S3 Pinout & Wiring Table
-
-| Component | Pin Function | ESP32-S3 Pin | Description / Notes |
-| :--- | :--- | :--- | :--- |
-| **PC Host Link** | USB D+ / D- / VBUS | `Native USB` or `UART0` | USB-C data cable (Baud: 115200 or 921600) |
-| **Motor 1 (Front Left / Roll)** | RPWM (Forward)<br/>LPWM (Reverse) | `GPIO 4`<br/>`GPIO 5` | IBT-2 H-Bridge PWM control (20 kHz) |
-| **Motor 2 (Front Right / Pitch)** | RPWM (Forward)<br/>LPWM (Reverse) | `GPIO 6`<br/>`GPIO 7` | IBT-2 H-Bridge PWM control (20 kHz) |
-| **Motor 3 (Rear Center / Heave)** | RPWM (Forward)<br/>LPWM (Reverse) | `GPIO 15`<br/>`GPIO 16` | IBT-2 H-Bridge PWM control (20 kHz) |
-| **Emergency Stop Line** | Driver Enable (`R_EN` + `L_EN`) | `GPIO 17` | Shared hardware enable (Active HIGH, pull-down to GND) |
-| **Hall Sensor 1 (Motor 1)** | Analog Output (0–3.3V) | `GPIO 1` (ADC1_CH0) | Joint 1 12-bit position feedback ($0.088^\circ$ resolution) |
-| **Hall Sensor 2 (Motor 2)** | Analog Output (0–3.3V) | `GPIO 2` (ADC1_CH1) | Joint 2 12-bit position feedback ($0.088^\circ$ resolution) |
-| **Hall Sensor 3 (Motor 3)** | Analog Output (0–3.3V) | `GPIO 3` (ADC1_CH2) | Joint 3 12-bit position feedback ($0.088^\circ$ resolution) |
-| **SSD1306 OLED (0.96")** | SDA (Data)<br/>SCL (Clock) | `GPIO 8`<br/>`GPIO 9` | I2C diagnostic screen (400 kHz) |
-| **Physical E-Stop Button** | E-Stop Switch | `GPIO 18` | Hardware emergency stop button (Internal Pullup, Active LOW) |
-| **Status RGB / LED** | Built-in WS2812 / LED | `GPIO 48` / `GPIO 38`| Color-coded system status (Green=Running, Red=E-Stop, Amber=Safety Watchdog) |
+| Component | Pin Function | ESP32-S3 Pin | Physical Header Label | Description / Notes |
+| :--- | :--- | :--- | :--- | :--- |
+| **I2C Bus (AS5600 & OLED)** | SDA (Data)<br/>SCL (Clock) | `GPIO 1`<br/>`GPIO 2` | Right Header **`1`**<br/>Right Header **`2`** | Standard 100 kHz bus: AS5600 @ 0x36, OLED @ 0x3C |
+| **Emergency Stop Line** | Driver Enable (`R_EN` + `L_EN`) | `GPIO 17` | Left Header `17` | Shared active-HIGH enable across all 3 IBT-2 drivers |
+| **Motor 1 (Roll / Front Left)** | RPWM (Forward)<br/>LPWM (Reverse) | `GPIO 4`<br/>`GPIO 5` | Left Header `4`<br/>Left Header `5` | 20 kHz PWM to IBT-2 BTS7960 driver |
+| **Motor 2 (Pitch / Front Right)**| RPWM (Forward)<br/>LPWM (Reverse) | `GPIO 6`<br/>`GPIO 7` | Left Header `6`<br/>Left Header `7` | 20 kHz PWM to IBT-2 BTS7960 driver |
+| **Motor 3 (Heave / Rear)** | RPWM (Forward)<br/>LPWM (Reverse) | `GPIO 15`<br/>`GPIO 16` | Left Header `15`<br/>Left Header `16` | 20 kHz PWM to IBT-2 BTS7960 driver |
+| **Physical E-Stop Button** | E-Stop Switch | `GPIO 18` | Left Header `18` | Hardware emergency stop button (Internal Pullup, Active LOW) |
+| **Status RGB NeoPixel** | Built-in WS2812 | `GPIO 48` | Onboard | Single-wire RMT driver (Green=Running, Red=E-Stop, Amber=Connecting) |
 
 > [!WARNING]
 > **Power Supply & Grounding:**
-> - Motors require high-current 24V power supplies (e.g. 2x Mean Well LRS-350-24).
-> - **Never power motors directly from the ESP32 3.3V/5V rail.**
-> - Ensure a **common ground (GND)** connection between the ESP32-S3, the IBT-2 driver logic GND, the Hall sensors, and the 24V power supply negative terminal.
+> - Motors require high-current 12V/24V power supplies.
+> - **Never power motors from the ESP32 3.3V/5V rails.**
+> - Ensure a **common ground (GND)** connection between the ESP32-S3, the IBT-2 logic GND, the AS5600 GND, and the motor power supply negative terminal.
 
 ---
 
 ## 🛠️ 4. Building & Flashing the ESP32-S3 Firmware
 
-The production firmware is located in `motionsimbot/`.
+### Automated One-Click Build Script
+Run the automated PowerShell build pipeline from the root directory:
+```powershell
+.\buildbinesp32s3.ps1
+```
+This compiles the firmware and generates ready-to-flash binaries in `rdytoflashbin/`:
+- `motionsimbot.bin` (Application binary)
+- `bootloader.bin`
+- `partition-table.bin`
+- `motionsimbot_factory_4mb.bin` (Single merged image flashable at offset `0x0`)
 
-### 1. Open ESP-IDF Environment
-Open an ESP-IDF terminal (ESP-IDF v5.1+ recommended):
-
-```bash
-cd motionsimbot
+### Flashing over USB-Serial
+```powershell
+.\flashbinesp32s3.ps1 COM9
 ```
 
-### 2. Set Target and Configure Board
-```bash
-idf.py set-target esp32s3
-idf.py menuconfig
-```
-* Under **Component config → MotionSim Hardware Configuration**, verify your configured GPIO pins.
-* If using wired USB Serial, enable **ESP System Settings → Channel for console output → USB CDC**.
-
-### 3. Build & Flash over USB
-```bash
-idf.py build
-idf.py -p COMx flash monitor
-```
-*(Replace `COMx` on Windows with your device COM port, e.g. `COM3` or `COM7`)*
+### Wireless Flashing over WiFi (OTA)
+Once flashed initially via USB:
+1. Open **`http://motionsimbot1.local/`** in your browser.
+2. Scroll to the **OTA Firmware Update** card.
+3. Select `rdytoflashbin/motionsimbot.bin`.
+4. Click **Flash Firmware**. The progress bar will stream the binary to flash and automatically reboot the device!
 
 ---
 
-## 🧪 5. Testing with `motionsimbench` & Cyberpunk PC Dashboard
+## 🛡️ 5. Commissioning, Tuning & Safety Procedures
 
-Before operating under full motor load, validate PC-to-controller communication and telemetry flow using `motionsimbench` and the Python benchmark tool:
+### 1. Initial Motor Commissioning
+1. Power up the ESP32-S3 and 12V/24V power supply.
+2. Open `http://motionsimbot1.local/`.
+3. Verify that the **Magnet Status** pill reads **Magnet OK**.
+4. Click **`⚡ ARM MOTORS`**.
+5. Click **`Jog FWD (25%)`** to test movement.
+6. Verify rotation direction: if angle moves opposite to target, check **Invert Motor 1 Polarity**.
 
-```bash
-python bench_pc_dashboard.py
-```
+### 2. PD Autocalibration
+1. Align the joint in a safe mid-range travel area.
+2. Click **`⚡ Autocalibrate PD`**.
+3. The controller performs a small step perturbation, measures rise time and damping, and derives $K_p$ and $K_d$.
+4. Click **`💾 Save to Flash`** to make gains permanent.
 
-* Open the benchmark dashboard at **`http://localhost:8080`**.
-* Verify round-trip latency (RTT $p99 < 2\text{ ms}$ over wired USB/Serial connection).
-* Confirm 0% packet loss and steady 60 Hz frame rate.
-
----
-
-## 🛡️ 6. Calibration, Tuning & Safety Procedures
-
-### 1. Joint Zero-Point Calibration
-On first assembly or mechanical adjustment:
-1. Manually align the motion rig to its level horizontal home position.
-2. Trigger the zero-point calibration routine via the USB-Serial CLI or web API:
-   ```text
-   CALIBRATE 1
-   CALIBRATE 2
-   CALIBRATE 3
-   ```
-3. Current Hall sensor counts will be stored in ESP32 non-volatile storage (NVS) as the $0.0^\circ$ center reference.
-
-### 2. PID Tuning Guidelines
-Closed-loop position PID runs on Core 1 of the ESP32-S3 at 500 Hz:
-* **$K_p$ (Proportional)**: Increases responsiveness and stiffness. Increase until the platform follows movements tightly without hunting.
-* **$K_i$ (Integral)**: Eliminates steady-state position droop under rider weight. Keep low (e.g. 0.01–0.05) and clamp integral windup.
-* **$K_d$ (Derivative)**: Dampens overshoot and mechanical resonance. Increase if the rig oscillates when reversing direction.
-
-### 3. Built-In Safety Systems
-* **Watchdog Timeout**: If no new telemetry packet is received for **>100 ms**, the safety watchdog trips, disabling driver PWM and parking the rig safely.
-* **Duty Cycle Clamping**: Motor outputs are hard-limited to 80% maximum duty (819/1023) to prevent driver overcurrent.
-* **Hardware E-Stop**: The physical E-Stop button instantly cuts the active-high IBT-2 enable line (`GPIO 17`), removing motor torque immediately.
-
----
-
-## ❓ 7. Troubleshooting Matrix
-
-| Issue | Root Cause | Solution |
-| :--- | :--- | :--- |
-| **Web UI (`:3103`) says "Disconnected from Backend"** | Node.js server not running or port blocked | Run `npm start` in `udp_viewer/` directory; verify no conflicting process is using port 3103. |
-| **Web UI connected, but gauges stay at 0 while driving** | DiRT Rally UDP not sending or wrong XML settings | 1. Check `hardware_settings_config.xml` has `extradata="3"` and `ip="127.0.0.1"`.<br/>2. Allow DiRT Rally through Windows Firewall for UDP traffic.<br/>3. Verify game was restarted after editing XML. |
-| **Port 20777 conflict error (`EADDRINUSE`)** | Another telemetry tool (SimHub, MoTeC, old script) is listening on 20777 | Close any background telemetry bridges or instances of `bench_pc_dashboard.py` before starting `udp_viewer`. |
-| **ESP32-S3 not detected on COM port** | Missing USB-to-UART / CDC driver | Install Espressif USB-JTAG/Serial or CH343/CP210x drivers from Device Manager. |
-| **Erratic or jittery motor movement** | Sensor noise or ground loop | 1. Ensure all GND lines are tied together.<br/>2. Add 0.1 µF ceramic bypass capacitors on Hall sensor analog signal pins to GND. |
-| **Motors do not engage** | E-Stop tripped or enable pin low | Check physical E-Stop button state; verify `GPIO 17` (IBT-2 Enable) is driven HIGH during operation. |
-
----
-
-## 🚀 Quick Start Summary
-
-```bash
-# 1. Edit DiRT Rally config (extradata="3", ip="127.0.0.1", port="20777")
-# 2. Launch Local Web Telemetry Dashboard:
-cd udp_viewer
-npm install
-npm start
-
-# 3. Open browser:
-http://localhost:3103/
-
-# 4. Plug in wired ESP32-S3 over USB-C, launch DiRT Rally, and drive!
-```
+### 3. Multi-Hazard Automatic E-Stop
+The automatic E-stop trips and cuts motor power immediately if:
+- **Runaway / Reversed Wiring:** Motor duty applied towards target, but error increases for >200 ms.
+- **Actuator Stall / Jam:** High duty (>25%) applied for >1.2 s with zero movement.
+- **Velocity / Sensor Jump:** Angle changes >18° in a single 10 ms cycle (>1800°/s jump; detached magnet).
+- **Magnet Loss:** AS5600 STATUS register drops Magnet Detected (`MD=0`).

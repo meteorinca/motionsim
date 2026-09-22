@@ -2,115 +2,697 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>MotionSimBot Control Panel</title>
   <style>
-    :root {
-      --bg: #080b12;
-      --card: #121824;
-      --accent: #00f0ff;
-      --red: #ff0055;
-      --green: #00ff66;
-      --text: #e2e8f0;
-      --dim: #64748b;
-    }
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'Consolas', monospace;
+    * {
+      box-sizing: border-box;
       margin: 0;
-      padding: 20px;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
     }
-    .header {
+    html, body {
+      min-height: 100%;
+      overflow-y: auto;
+      width: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: #0d0d1a;
+      color: #e0e0f0;
+    }
+    .content {
+      padding: 16px 12px 30px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      max-width: 620px;
+      margin: 0 auto;
+    }
+    .header-bar {
+      width: 100%;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      border-bottom: 2px solid var(--accent);
-      padding-bottom: 12px;
-      margin-bottom: 20px;
+      margin-bottom: 12px;
+      padding: 4px 6px;
     }
-    h1 { margin: 0; color: var(--accent); font-size: 1.6rem; letter-spacing: 2px; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 15px; margin-bottom: 20px; }
-    .card { background: var(--card); border: 1px solid #1e293b; border-radius: 8px; padding: 16px; }
-    .card h3 { margin: 0 0 10px 0; color: var(--dim); font-size: 0.85rem; text-transform: uppercase; }
-    .val { font-size: 1.8rem; font-weight: bold; }
-    .unit { font-size: 0.9rem; color: var(--dim); }
-    .controls { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 15px; }
+    .brand-title {
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      color: #7c6af7;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 7px;
+      border-radius: 6px;
+      background: #1e1e3a;
+      color: #a0a0d0;
+      letter-spacing: 0.5px;
+    }
+    .badge.green { background: rgba(0, 229, 160, 0.15); color: #00e5a0; border: 1px solid #00e5a0; }
+    .badge.red { background: rgba(255, 51, 102, 0.2); color: #ff3366; border: 1px solid #ff3366; }
+    .badge.amber { background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px solid #f59e0b; }
+
+    .card {
+      background: #11112a;
+      border: 1px solid #1e1e3a;
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 14px;
+      width: 100%;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.3);
+    }
+    .card h2 {
+      font-size: 13px;
+      font-weight: 700;
+      color: #7c6af7;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .time-big {
+      font-size: 32px;
+      font-weight: 700;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      color: #00e5a0;
+      text-align: center;
+      letter-spacing: 1px;
+    }
+    .epoch-sub {
+      font-size: 11px;
+      color: #555577;
+      margin-top: 2px;
+      text-align: center;
+      font-family: monospace;
+    }
+
+    /* Giant E-Stop & Arming */
+    .estop-hero {
+      width: 100%;
+      padding: 16px;
+      border-radius: 12px;
+      font-size: 17px;
+      font-weight: 900;
+      letter-spacing: 1.5px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      border: 2px solid #ff3366;
+      background: rgba(255, 51, 102, 0.12);
+      color: #ff3366;
+    }
+    .estop-hero:hover {
+      background: #ff3366;
+      color: #fff;
+      box-shadow: 0 0 20px rgba(255, 51, 102, 0.6);
+    }
+    .estop-hero.tripped {
+      background: #ff3366;
+      color: #fff;
+      animation: pulse-red 1.2s infinite;
+    }
+    @keyframes pulse-red {
+      0% { box-shadow: 0 0 0 0 rgba(255, 51, 102, 0.7); }
+      70% { box-shadow: 0 0 0 16px rgba(255, 51, 102, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(255, 51, 102, 0); }
+    }
+    .alert-banner {
+      background: #2a1018;
+      border: 1px solid #ff3366;
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: #ff88a3;
+      font-size: 12.5px;
+      margin-top: 10px;
+      line-height: 1.4;
+      display: none;
+    }
+
+    /* Controls & Buttons */
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
     button {
-      background: var(--card); color: var(--accent); border: 1px solid var(--accent);
-      padding: 10px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; font-family: inherit;
+      background: #1a1a35;
+      color: #a0a0d0;
+      border: 1px solid #2a2a50;
+      border-radius: 8px;
+      padding: 9px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      font-family: inherit;
     }
-    button:hover { background: var(--accent); color: var(--bg); }
-    button.estop { border-color: var(--red); color: var(--red); font-size: 1.2rem; }
-    button.estop:hover { background: var(--red); color: #fff; }
-    input { background: var(--card); border: 1px solid var(--dim); color: #fff; padding: 8px; border-radius: 4px; font-family: inherit; width: 70px; }
+    button:hover {
+      border-color: #7c6af7;
+      color: #fff;
+    }
+    button.btn-primary {
+      background: linear-gradient(135deg, #7c6af7, #5a48d8);
+      border: none;
+      color: #fff;
+    }
+    button.btn-primary:hover {
+      background: linear-gradient(135deg, #9182fa, #6c5be0);
+      box-shadow: 0 0 14px rgba(124, 106, 247, 0.4);
+    }
+    button.btn-arm {
+      background: rgba(0, 229, 160, 0.12);
+      border-color: #00e5a0;
+      color: #00e5a0;
+    }
+    button.btn-arm:hover {
+      background: #00e5a0;
+      color: #0a0a1e;
+    }
+    button.btn-disarm {
+      background: rgba(255, 51, 102, 0.12);
+      border-color: #ff3366;
+      color: #ff3366;
+    }
+    button.btn-disarm:hover {
+      background: #ff3366;
+      color: #fff;
+    }
+    button.btn-clear {
+      background: #222244;
+      border-color: #00e5a0;
+      color: #00e5a0;
+      font-weight: 700;
+    }
+    button.btn-clear:hover {
+      background: #00e5a0;
+      color: #0a0a1e;
+    }
+
+    input[type=number], input[type=text] {
+      background: #0a0a1e;
+      border: 1px solid #2a2a50;
+      border-radius: 8px;
+      padding: 8px 10px;
+      color: #e0e0f0;
+      font-size: 14px;
+      outline: none;
+      font-family: inherit;
+    }
+    input[type=number]:focus, input[type=text]:focus {
+      border-color: #7c6af7;
+    }
+
+    /* Angle Telemetry Display */
+    .telem-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .telem-box {
+      background: #0a0a1e;
+      border: 1px solid #1e1e3a;
+      border-radius: 10px;
+      padding: 12px;
+      text-align: center;
+    }
+    .telem-box.full {
+      grid-column: span 2;
+    }
+    .telem-val {
+      font-size: 26px;
+      font-weight: 800;
+      font-family: monospace;
+      color: #00f0ff;
+    }
+    .telem-lbl {
+      font-size: 11px;
+      font-weight: 700;
+      color: #666688;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+    .telem-sub {
+      font-size: 11px;
+      color: #8888aa;
+      margin-top: 4px;
+      font-family: monospace;
+    }
+
+    /* Pretty Plots Oscilloscope */
+    .plot-container {
+      width: 100%;
+      background: #080814;
+      border: 1px solid #1a1a35;
+      border-radius: 10px;
+      overflow: hidden;
+      position: relative;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 180px;
+    }
+    .plot-legend {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      padding: 6px;
+      background: #0d0d20;
+      font-size: 11px;
+      font-weight: 600;
+      border-top: 1px solid #1e1e3a;
+    }
+    .legend-item { display: flex; align-items: center; gap: 5px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; }
+
+    /* Progress & Feedback */
+    .err-msg {
+      font-size: 12px;
+      color: #ff3366;
+      margin-top: 6px;
+      min-height: 16px;
+    }
+    .ok-msg {
+      font-size: 12px;
+      color: #00e5a0;
+      margin-top: 6px;
+    }
   </style>
 </head>
 <body>
-  <div class="header">
-    <h1>🤖 MOTIONSIMBOT CONTROLLER</h1>
-    <button class="estop" onclick="toggleEstop()">🚨 EMERGENCY STOP</button>
-  </div>
+  <div class="content">
 
-  <div class="grid">
-    <div class="card">
-      <h3>Joint 1 (Roll)</h3>
-      <div class="val" id="j1-angle">0.0°</div>
-      <div class="unit" id="j1-target">Target: 180.0°</div>
+    <!-- Top Navigation / Device Bar -->
+    <div class="header-bar">
+      <div class="brand-title">
+        <span>⚡ MOTIONSIMBOT</span>
+        <span class="badge" id="fw-badge">v1.0-bot</span>
+      </div>
+      <div style="display:flex; gap:6px; align-items:center;">
+        <span class="badge" id="wifi-pill">Connecting...</span>
+        <span class="badge" id="udp-pill">0.0 Hz</span>
+      </div>
     </div>
-    <div class="card">
-      <h3>Joint 2 (Roll)</h3>
-      <div class="val" id="j2-angle">0.0°</div>
-      <div class="unit" id="j2-target">Target: 180.0°</div>
-    </div>
-    <div class="card">
-      <h3>Joint 3 (Pitch/Heave)</h3>
-      <div class="val" id="j3-angle">0.0°</div>
-      <div class="unit" id="j3-target">Target: 180.0°</div>
-    </div>
-    <div class="card">
-      <h3>UDP Packet Rate</h3>
-      <div class="val" style="color:var(--green)" id="rate">0.0 <span class="unit">Hz</span></div>
-    </div>
-  </div>
 
-  <div class="card">
-    <h3>Closed-Loop PID Tuning</h3>
-    <div class="controls">
-      <label>Kp: <input type="number" id="kp" step="0.1" value="8.5"></label>
-      <label>Ki: <input type="number" id="ki" step="0.05" value="0.2"></label>
-      <label>Kd: <input type="number" id="kd" step="0.1" value="1.2"></label>
-      <button onclick="setPid()">Update PID</button>
+    <!-- Time Sync Card (MyBot Style) -->
+    <div class="card" style="padding:14px 16px;">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span style="font-size:11px; font-weight:700; color:#7c6af7; text-transform:uppercase; letter-spacing:1px;">System Time</span>
+        <span class="badge green" id="time-sync-badge">synced</span>
+      </div>
+      <div class="time-big" id="clock">--:--:--</div>
+      <div class="epoch-sub">Epoch: <span id="epoch">0</span> | IP: <span id="ip-addr">--</span></div>
     </div>
-  </div>
 
-  <div class="card" style="margin-top:20px;">
-    <h3>Hall Sensor Zero Calibration</h3>
-    <div class="controls">
-      <button onclick="calibrate(1)">Zero Joint 1</button>
-      <button onclick="calibrate(2)">Zero Joint 2</button>
-      <button onclick="calibrate(3)">Zero Joint 3</button>
+    <!-- Hero Safety & E-Stop Card -->
+    <div class="card">
+      <h2>Safety Supervisor <span id="arm-badge" class="badge">DISARMED</span></h2>
+      <button class="estop-hero" id="estop-btn" onclick="toggleEstop()">
+        <span>🚨</span> <span id="estop-text">EMERGENCY STOP</span>
+      </button>
+      <div class="alert-banner" id="estop-alert"></div>
+
+      <div class="btn-row" style="margin-top:12px;">
+        <button class="btn-arm" id="arm-btn" onclick="setArm(1)">⚡ ARM MOTORS</button>
+        <button class="btn-disarm" id="disarm-btn" onclick="setArm(0)">🛑 SAFE DISARM</button>
+        <button class="btn-clear" onclick="clearEstop()" style="margin-left:auto;">✔ CLEAR E-STOP</button>
+      </div>
     </div>
+
+    <!-- Live Telemetry Card -->
+    <div class="card">
+      <h2>Joint 1 (Roll) & AS5600 Encoder <span id="magnet-badge" class="badge green">Magnet OK</span></h2>
+      <div class="telem-grid">
+        <div class="telem-box">
+          <div class="telem-lbl">Actual Angle</div>
+          <div class="telem-val" id="j1-actual" style="color:#d946ef;">0.00°</div>
+          <div class="telem-sub">Raw: <span id="j1-raw">0</span></div>
+        </div>
+        <div class="telem-box">
+          <div class="telem-lbl">Target Angle</div>
+          <div class="telem-val" id="j1-target" style="color:#00f0ff;">180.00°</div>
+          <div class="telem-sub">Error: <span id="j1-err">0.00°</span></div>
+        </div>
+        <div class="telem-box full" style="display:flex; justify-content:space-between; align-items:center; padding:10px 14px;">
+          <div>
+            <span style="font-size:11px; color:#8888aa; font-weight:700;">PWM EFFORT: </span>
+            <span id="j1-duty" style="font-size:16px; font-weight:800; font-family:monospace; color:#f59e0b;">0</span>
+            <span style="font-size:10px; color:#555;"> / 819</span>
+          </div>
+          <div>
+            <button onclick="calibrateZero(1)" style="padding:5px 10px; font-size:11px;">Set Zero (0°)</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Open-Loop Manual Jogging Card (Always works!) -->
+    <div class="card">
+      <h2>Open-Loop Jogging (Always Works) <span class="badge" id="inv-badge">Polarity Normal</span></h2>
+      <div style="font-size:12px; color:#8888aa; margin-bottom:10px;">
+        Immediate open-loop steps to test movement or position the motor without closed-loop interference:
+      </div>
+      <div class="btn-row" style="align-items:center;">
+        <button onclick="jogMotor(1, -160, 250)">◀ Slow REV (15%)</button>
+        <button onclick="jogMotor(1, -260, 350)">◀ Step REV (25%)</button>
+        <button onclick="jogMotor(1, 0, 0)" style="border-color:#ff3366; color:#ff3366;">STOP</button>
+        <button onclick="jogMotor(1, 260, 350)">Step FWD (25%) ▶</button>
+        <button onclick="jogMotor(1, 160, 250)">Slow FWD (15%) ▶</button>
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; padding-top:10px; border-top:1px solid #1e1e3a;">
+        <label style="font-size:12px; display:flex; align-items:center; gap:8px; cursor:pointer;">
+          <input type="checkbox" id="inv-check" onchange="toggleInversion(1)">
+          <span>Invert Motor 1 Polarity (Reverse Direction)</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Pretty Plots (Real-Time Oscilloscope) -->
+    <div class="card">
+      <h2>Live Waveform Telemetry <span class="badge green" id="fps-badge">60 FPS</span></h2>
+      <div class="plot-container">
+        <canvas id="scope"></canvas>
+        <div class="plot-legend">
+          <div class="legend-item"><div class="dot" style="background:#00f0ff;"></div> <span>Target Angle</span></div>
+          <div class="legend-item"><div class="dot" style="background:#d946ef;"></div> <span>Actual Angle (AS5600)</span></div>
+          <div class="legend-item"><div class="dot" style="background:#f59e0b;"></div> <span>Motor Duty</span></div>
+        </div>
+      </div>
+
+      <!-- Quick Step Test Buttons -->
+      <div style="margin-top:12px;">
+        <div style="font-size:11px; font-weight:700; color:#8888aa; text-transform:uppercase; margin-bottom:6px;">Closed-Loop Step Angle Tests</div>
+        <div class="btn-row">
+          <button onclick="stepTarget(-10)">-10°</button>
+          <button onclick="stepTarget(-5)">-5°</button>
+          <button onclick="setTargetAngle(180)">180° Center</button>
+          <button onclick="stepTarget(5)">+5°</button>
+          <button onclick="stepTarget(10)">+10°</button>
+        </div>
+        <div style="display:flex; gap:8px; margin-top:8px; align-items:center;">
+          <input type="number" id="cmd-angle" placeholder="Angle (°)" value="180.0" step="0.5" style="width:110px;">
+          <button class="btn-primary" onclick="cmdTargetFromInput()">Go to Angle</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Closed-Loop PD/PID Controller & Autotune Card -->
+    <div class="card">
+      <h2>PD / PID Closed-Loop Tuning</h2>
+      <div style="display:flex; gap:10px; margin-bottom:12px;">
+        <div style="flex:1;">
+          <label style="font-size:11px; color:#8888aa; font-weight:700;">Kp (Stiffness)</label>
+          <input type="number" id="kp" step="0.1" value="8.5" style="width:100%; margin-top:3px;">
+        </div>
+        <div style="flex:1;">
+          <label style="font-size:11px; color:#8888aa; font-weight:700;">Ki (Integral)</label>
+          <input type="number" id="ki" step="0.05" value="0.2" style="width:100%; margin-top:3px;">
+        </div>
+        <div style="flex:1;">
+          <label style="font-size:11px; color:#8888aa; font-weight:700;">Kd (Damping)</label>
+          <input type="number" id="kd" step="0.1" value="1.2" style="width:100%; margin-top:3px;">
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn-primary" onclick="setPid()">Apply Gains</button>
+        <button onclick="savePid()">💾 Save to Flash</button>
+        <button onclick="startAutotune(1)" style="border-color:#00e5a0; color:#00e5a0;">⚡ Autocalibrate PD</button>
+      </div>
+      <div id="tune-msg" class="ok-msg" style="display:none;"></div>
+    </div>
+
+    <!-- Wireless OTA Firmware Update Card (Direct from MyBot) -->
+    <div class="card">
+      <h2>OTA Firmware Update</h2>
+      <input type="file" id="ota-file" accept=".bin" style="color:#a0a0d0; margin-bottom:10px; width:100%;">
+      <div style="background:#0a0a1e; border-radius:6px; height:8px; margin-bottom:8px; overflow:hidden;">
+        <div id="ota-bar" style="width:0%; height:100%; background:linear-gradient(90deg, #00e5a0, #7c6af7); transition:width .3s;"></div>
+      </div>
+      <button class="btn-primary" id="ota-btn" onclick="doOTA()">Flash Firmware</button>
+      <div class="err-msg" id="ota-msg"></div>
+    </div>
+
   </div>
 
   <script>
-    let estopState = false;
+    // --- State & Canvas Setup ---
+    let estopActive = false;
+    let armed = false;
+    let currentTarget = 180.0;
+    let currentActual = 180.0;
+    let currentDuty = 0;
+    let timeOffset = 0;
+    let isPolling = false;
 
+    const canvas = document.getElementById('scope');
+    const ctx = canvas.getContext('2d');
+    const historyLen = 140;
+    const targetHist = new Array(historyLen).fill(180);
+    const actualHist = new Array(historyLen).fill(180);
+    const dutyHist = new Array(historyLen).fill(0);
+
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * window.devicePixelRatio;
+      canvas.height = 180 * window.devicePixelRatio;
+      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    // --- High Performance Canvas Rendering ---
+    function renderScope() {
+      const w = canvas.getBoundingClientRect().width;
+      const h = 180;
+      ctx.clearRect(0, 0, w, h);
+
+      // Grid Lines
+      ctx.strokeStyle = '#161630';
+      ctx.lineWidth = 1;
+      for (let y = 30; y < h; y += 30) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+      }
+
+      // Vertical auto-scaling around target/actual (±15 degrees span centered)
+      const center = targetHist[targetHist.length - 1] || 180;
+      const span = 30.0; // 30 deg total span
+      const minDeg = center - (span / 2);
+      const maxDeg = center + (span / 2);
+
+      const toY = (deg) => h - ((deg - minDeg) / (maxDeg - minDeg)) * h;
+
+      // Draw Motor Duty Fill (amber)
+      ctx.fillStyle = 'rgba(245, 158, 11, 0.12)';
+      ctx.beginPath();
+      ctx.moveTo(0, h / 2);
+      for (let i = 0; i < historyLen; i++) {
+        const x = (i / (historyLen - 1)) * w;
+        const dutyNorm = (dutyHist[i] / 819.0) * (h / 2.5);
+        ctx.lineTo(x, (h / 2) - dutyNorm);
+      }
+      ctx.lineTo(w, h / 2);
+      ctx.closePath();
+      ctx.fill();
+
+      // Draw Target Trace (Cyan)
+      ctx.strokeStyle = '#00f0ff';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      for (let i = 0; i < historyLen; i++) {
+        const x = (i / (historyLen - 1)) * w;
+        const y = toY(targetHist[i]);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+
+      // Draw Actual Trace (Purple)
+      ctx.strokeStyle = '#d946ef';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      for (let i = 0; i < historyLen; i++) {
+        const x = (i / (historyLen - 1)) * w;
+        const y = toY(actualHist[i]);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+
+      requestAnimationFrame(renderScope);
+    }
+    requestAnimationFrame(renderScope);
+
+    // --- Telemetry Polling (Non-blocking queue) ---
     async function poll() {
+      if (isPolling) return;
+      isPolling = true;
       try {
         const res = await fetch('/api/stats');
         const d = await res.json();
-        document.getElementById('j1-angle').innerText = d.m1.actual.toFixed(2) + '°';
-        document.getElementById('j1-target').innerText = 'Target: ' + d.m1.target.toFixed(1) + '° | Duty: ' + d.m1.duty;
 
-        document.getElementById('j2-angle').innerText = d.m2.actual.toFixed(2) + '°';
-        document.getElementById('j2-target').innerText = 'Target: ' + d.m2.target.toFixed(1) + '° | Duty: ' + d.m2.duty;
+        // 1. Joint 1 Angle & Target
+        currentTarget = d.m1.target;
+        currentActual = d.m1.actual;
+        currentDuty = d.m1.duty;
 
-        document.getElementById('j3-angle').innerText = d.m3.actual.toFixed(2) + '°';
-        document.getElementById('j3-target').innerText = 'Target: ' + d.m3.target.toFixed(1) + '° | Duty: ' + d.m3.duty;
+        targetHist.push(currentTarget); targetHist.shift();
+        actualHist.push(currentActual); actualHist.shift();
+        dutyHist.push(currentDuty); dutyHist.shift();
 
-        document.getElementById('rate').innerText = d.pkt_rate_hz.toFixed(1);
-        estopState = d.estop;
-      } catch(e){}
+        document.getElementById('j1-actual').textContent = currentActual.toFixed(2) + '°';
+        document.getElementById('j1-target').textContent = currentTarget.toFixed(2) + '°';
+        document.getElementById('j1-err').textContent = d.m1.error.toFixed(2) + '°';
+        document.getElementById('j1-duty').textContent = currentDuty;
+        document.getElementById('j1-raw').textContent = d.as5600.raw;
+
+        // 2. Safety & E-Stop
+        estopActive = d.estop;
+        armed = d.armed;
+        const estopBtn = document.getElementById('estop-btn');
+        const estopAlert = document.getElementById('estop-alert');
+        const armBadge = document.getElementById('arm-badge');
+
+        if (estopActive) {
+          estopBtn.classList.add('tripped');
+          document.getElementById('estop-text').textContent = '🚨 E-STOPPED! CLICK TO CLEAR';
+          estopAlert.style.display = 'block';
+          estopAlert.innerHTML = '<strong>TRIPPED:</strong> ' + d.estop_reason;
+        } else {
+          estopBtn.classList.remove('tripped');
+          document.getElementById('estop-text').textContent = 'EMERGENCY STOP';
+          estopAlert.style.display = 'none';
+        }
+
+        if (armed) {
+          armBadge.className = 'badge green';
+          armBadge.textContent = 'MOTORS ARMED';
+        } else {
+          armBadge.className = 'badge';
+          armBadge.textContent = 'DISARMED (SAFE)';
+        }
+
+        // Magnet status (smoothed)
+        const magBadge = document.getElementById('magnet-badge');
+        if (d.as5600.magnet_ok) {
+          magBadge.className = 'badge green';
+          magBadge.textContent = 'Magnet OK';
+        } else {
+          magBadge.className = 'badge red';
+          magBadge.textContent = 'Magnet Check';
+        }
+
+        // Direction Inversion
+        document.getElementById('inv-check').checked = d.m1.inv;
+        document.getElementById('inv-badge').textContent = d.m1.inv ? 'Polarity Inverted' : 'Polarity Normal';
+
+        // Autotune status
+        if (d.autotune && d.autotune.running) {
+          const tmsg = document.getElementById('tune-msg');
+          tmsg.style.display = 'block';
+          tmsg.textContent = 'Autotuning: ' + d.autotune.status;
+        }
+
+        // Network & Host Info
+        document.getElementById('fw-badge').textContent = d.version;
+        document.getElementById('udp-pill').textContent = d.pkt_rate_hz.toFixed(1) + ' Hz';
+        document.getElementById('wifi-pill').textContent = d.rssi + ' dBm';
+        document.getElementById('wifi-pill').className = 'badge green';
+        document.getElementById('ip-addr').textContent = d.ip;
+
+      } catch(e) {
+      } finally {
+        isPolling = false;
+      }
+    }
+    setInterval(poll, 120);
+
+    // --- MyBot Timekeeper Sync ---
+    function syncTime() {
+      fetch('/time').then(r => r.json()).then(d => {
+        if (d.synced) {
+          timeOffset = (d.epoch * 1000) - Date.now();
+          document.getElementById('time-sync-badge').textContent = 'NTP SYNC';
+        } else {
+          fetch('/sync_time?epoch=' + Math.floor(Date.now() / 1000));
+          timeOffset = 0;
+          document.getElementById('time-sync-badge').textContent = 'LOCAL SYNC';
+        }
+      }).catch(() => {});
+    }
+    syncTime(); setInterval(syncTime, 10000);
+
+    setInterval(function() {
+      const d = new Date(Date.now() + timeOffset);
+      const f = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) + ':' + ('0' + d.getSeconds()).slice(-2);
+      document.getElementById('clock').textContent = f;
+      document.getElementById('epoch').textContent = Math.floor(d.getTime() / 1000);
+    }, 200);
+
+    // --- Control Commands ---
+    async function toggleEstop() {
+      if (estopActive) {
+        await clearEstop();
+      } else {
+        await fetch('/api/estop?state=1', {method: 'POST'});
+      }
+    }
+
+    async function clearEstop() {
+      await fetch('/api/estop/clear', {method: 'POST'});
+      poll();
+    }
+
+    async function setArm(state) {
+      await fetch('/api/arm?state=' + state, {method: 'POST'});
+      poll();
+    }
+
+    async function setTargetAngle(deg) {
+      document.getElementById('cmd-angle').value = deg.toFixed(1);
+      await fetch('/api/target?joint=1&angle=' + deg, {method: 'POST'});
+    }
+
+    function stepTarget(delta) {
+      setTargetAngle(currentTarget + delta);
+    }
+
+    function cmdTargetFromInput() {
+      const val = parseFloat(document.getElementById('cmd-angle').value);
+      if (!isNaN(val)) setTargetAngle(val);
+    }
+
+    // Open-loop jog works immediately on click
+    async function jogMotor(joint, duty, duration) {
+      await fetch('/api/motor/jog?joint=' + joint + '&duty=' + duty + '&duration=' + duration, {method: 'POST'});
+      poll();
+    }
+
+    async function toggleInversion(joint) {
+      const inv = document.getElementById('inv-check').checked ? 1 : 0;
+      await fetch('/api/motor/invert?joint=' + joint + '&inverted=' + inv, {method: 'POST'});
+    }
+
+    async function calibrateZero(joint) {
+      if (confirm('Set current physical position as 0° Zero Home for Joint ' + joint + '?')) {
+        await fetch('/api/calibrate?joint=' + joint, {method: 'POST'});
+        poll();
+      }
     }
 
     async function setPid() {
@@ -118,20 +700,64 @@
       const ki = document.getElementById('ki').value;
       const kd = document.getElementById('kd').value;
       await fetch('/api/pid?kp=' + kp + '&ki=' + ki + '&kd=' + kd);
+      showTuneMsg('Gains applied to controller');
     }
 
-    async function calibrate(joint) {
-      if (confirm('Set current physical position as Zero 0° reference for Joint ' + joint + '?')) {
-        await fetch('/api/calibrate?joint=' + joint, {method: 'POST'});
-      }
+    async function savePid() {
+      const res = await fetch('/api/pid/save', {method: 'POST'});
+      const d = await res.json();
+      if (d.saved) showTuneMsg('Gains successfully saved to Flash NVS!');
     }
 
-    async function toggleEstop() {
-      estopState = !estopState;
-      await fetch('/api/estop?state=' + (estopState ? 1 : 0), {method: 'POST'});
+    async function startAutotune(joint) {
+      showTuneMsg('Starting automated step test...');
+      await fetch('/api/autotune?joint=' + joint, {method: 'POST'});
     }
 
-    setInterval(poll, 250);
+    function showTuneMsg(txt) {
+      const el = document.getElementById('tune-msg');
+      el.style.display = 'block';
+      el.textContent = txt;
+      setTimeout(() => { el.style.display = 'none'; }, 4000);
+    }
+
+    // --- Wireless OTA Firmware Update (from MyBot) ---
+    function doOTA() {
+      const f = document.getElementById('ota-file').files[0];
+      const msg = document.getElementById('ota-msg');
+      const bar = document.getElementById('ota-bar');
+      const btn = document.getElementById('ota-btn');
+      if (!f) { msg.textContent = 'Please choose a .bin firmware file first'; return; }
+
+      btn.disabled = true; btn.style.opacity = '.5';
+      msg.style.color = '#a0a0d0'; msg.textContent = 'Streaming firmware to flash...';
+
+      const xhr = new XMLHttpRequest();
+      xhr.upload.onprogress = function(e) {
+        if (e.lengthComputable) {
+          const pct = (e.loaded / e.total) * 100;
+          bar.style.width = pct + '%';
+        }
+      };
+      xhr.onload = function() {
+        if (xhr.status === 200) {
+          msg.style.color = '#00e5a0';
+          msg.textContent = 'Flash success! ESP32-S3 is rebooting now...';
+          setTimeout(() => { location.reload(); }, 4000);
+        } else {
+          msg.style.color = '#ff3366';
+          msg.textContent = 'OTA Error: ' + xhr.status + ' (' + xhr.responseText + ')';
+          btn.disabled = false; btn.style.opacity = '1';
+        }
+      };
+      xhr.onerror = function() {
+        msg.style.color = '#ff3366';
+        msg.textContent = 'Network error during upload';
+        btn.disabled = false; btn.style.opacity = '1';
+      };
+      xhr.open('POST', '/ota', true);
+      xhr.send(f);
+    }
   </script>
 </body>
 </html>

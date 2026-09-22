@@ -1,105 +1,136 @@
-# MotionSimBot API Cheat Sheet & Hardware Wiring Guide
+# MotionSimBot API Cheat Sheet & Control Reference
 
-This document lists the hardware wiring, 12-bit Hall angle sensor math, IBT-2 motor driver specifications, REST HTTP API endpoints, and closed-loop PID control guidelines for the `motionsimbot` production firmware.
+This document details the REST HTTP API, direct angle commanding, closed-loop PD/PID tuning, automatic E-Stop safety supervisor, time synchronization, and wireless OTA flashing for the **ESP32-S3 MotionSimBot** motion controller.
 
----
-
-## 🔌 Hardware Wiring Guide (ESP32-C3 MotionSimBot)
-
-### 1. IBT-2 Motor Drivers (3 Motors: Roll, Pitch, Heave)
-
-Each motor is controlled by an **IBT-2 (BTS7960)** H-bridge module connected to 24V 250W motors:
-
-| Motor | Function | RPWM (Forward) | LPWM (Reverse) | EN (Enable) |
-| :--- | :--- | :--- | :--- | :--- |
-| **Motor 1** | Front Left (Roll + Heave) | `GPIO 2` | `GPIO 3` | `GPIO 4` |
-| **Motor 2** | Front Right (Roll + Heave) | `GPIO 5` | `GPIO 10` | `GPIO 4` (Shared) |
-| **Motor 3** | Rear Center (Pitch + Heave) | `GPIO 20` | `GPIO 21` | `GPIO 4` (Shared) |
-
-> [!NOTE]
-> All IBT-2 Enable pins (`R_EN` + `L_EN`) are tied together to **`GPIO 4`** as an active-high hardware Emergency Stop line.
+Base URL: `http://motionsimbot1.local` (or device IP address)
 
 ---
 
-### 2. 12-Bit 0–3.3 V Hall Effect Angle Sensors
+## 🌐 Complete HTTP REST API Reference
 
-360° rotatable Hall Position Sensors with 0–3.3 V analog output connected to ESP32 ADC1:
-
-| Joint | Sensor Channel | ESP32-C3 ADC Pin | Resolution |
-| :--- | :--- | :--- | :--- |
-| **Joint 1** | Motor 1 Position | `GPIO 0` (ADC1_CH0) | $0.088^\circ$ (12-bit) |
-| **Joint 2** | Motor 2 Position | `GPIO 1` (ADC1_CH1) | $0.088^\circ$ (12-bit) |
-| **Joint 3** | Motor 3 Position | `GPIO 2` (ADC1_CH2)* | $0.088^\circ$ (12-bit) |
-
-*\*Note: If GPIO 2 is used for PWM on C3, ADC1_CH3 on GPIO 3 or external I2C/SPI ADC ADS1115 can be configured in `board_config.h`.*
-
----
-
-### 3. Display, Status LEDs & Buttons
-
-| Component | Signal | ESP32-C3 Pin | Notes |
-| :--- | :--- | :--- | :--- |
-| **SSD1306 OLED** | SDA | `GPIO 7` | I2C Data (400 kHz) |
-| | SCL | `GPIO 6` | I2C Clock |
-| **Status LED** | Built-in | `GPIO 8` | Active LOW |
-| **E-Stop Button** | Input | `GPIO 9` | Physical Emergency Stop button (Internal Pullup) |
+| Endpoint | Method | Query / Body Parameters | Example | Description |
+| :--- | :---: | :--- | :--- | :--- |
+| **`/api/angle`** | `GET` | `joint` (1–3, default 1) | `/api/angle?joint=1` | **Read Angle**: Returns JSON with actual angle, target angle, error, raw counts, and duty. |
+| **`/api/target`** | `POST` / `GET` | `joint` (1–3), `angle` (degrees) | `/api/target?joint=1&angle=185.0` | **Command Angle**: Smoothly moves the joint to the specified angle under closed loop. |
+| **`/api/stats`** | `GET` | — | `/api/stats` | **Full Telemetry**: Returns all 3 joints, PID gains, E-stop state/reason, magnet health, UDP rate, IP, and time sync status. |
+| **`/api/arm`** | `POST` | `state` (`1`=Arm, `0`=Disarm) | `/api/arm?state=1` | **Arm/Disarm Motors**: Activates or cuts the IBT-2 driver hardware enable line (GPIO 17). |
+| **`/api/estop`** | `POST` | `state` (`1`=Trip, `0`=Clear) | `/api/estop?state=1` | **Software Emergency Stop**: Instantly drops driver enable and all PWM duty cycles to 0. |
+| **`/api/estop/clear`**| `POST` | — | `/api/estop/clear` | **Clear E-Stop**: Clears the emergency stop latch and resets runaway/stall hazard counters. |
+| **`/api/auto_estop`** | `POST` | `enable` (`1` or `0`) | `/api/auto_estop?enable=1` | **Auto E-Stop Toggle**: Enables/disables automated runaway, stall, and velocity jump monitoring. |
+| **`/api/motor/jog`** | `POST` / `GET` | `joint`, `duty` (-819..819), `duration` (ms) | `/api/motor/jog?joint=1&duty=250&duration=400` | **Manual Jog**: Pulses motor duty for commissioning tests (automatically stops after duration). |
+| **`/api/motor/invert`**| `POST`| `joint`, `inverted` (`1` or `0`) | `/api/motor/invert?joint=1&inverted=1` | **Invert Polarity**: Reverses motor direction in software (saved to flash NVS). |
+| **`/api/autotune`** | `POST` / `GET` | `joint` (1–3) | `/api/autotune?joint=1` | **Autocalibrate PD**: Runs automated step perturbation and calculates optimal Kp & Kd gains. |
+| **`/api/pid`** | `GET` | `kp`, `ki`, `kd` | `/api/pid?kp=9.0&kd=1.5` | **Update Gains**: Live updates PID controller stiffness, integral, and damping. |
+| **`/api/pid/save`** | `POST` | — | `/api/pid/save` | **Save PID to NVS**: Persists current tuned PID gains across reboots. |
+| **`/api/calibrate`** | `POST` | `joint` (1–3) | `/api/calibrate?joint=1` | **Zero Calibration**: Sets current physical angle as 0.00° home reference in NVS. |
+| **`/time`** | `GET` | — | `/time` | **Read Time**: Returns current epoch timestamp and NTP sync status (from MyBot). |
+| **`/sync_time`** | `GET` | `epoch` (unix seconds) | `/sync_time?epoch=1727045000` | **Sync Time**: Synchronizes internal ESP32 RTC to browser clock. |
+| **`/ota`** | `POST` | Binary body (`.bin` file stream) | *(Handled by WebUI)* | **Wireless Firmware Update**: Streams new firmware directly into the next flash OTA partition and reboots. |
 
 ---
 
-## 📐 0.088° Resolution 12-Bit Hall Angle Sensor Math
+## 📡 Sample JSON Responses
 
-The 12-bit ADC converts $0\text{--}3.3\text{ V}$ full-circle analog output to discrete digital counts $D \in [0, 4095]$:
+### 1. `/api/angle?joint=1`
+```json
+{
+  "joint": 1,
+  "actual": 182.45,
+  "target": 180.00,
+  "error": -2.45,
+  "duty": -180,
+  "raw": 2076
+}
+```
 
-$$\text{Resolution} = \frac{360.0^\circ}{4096} = 0.08789^\circ \approx 0.088^\circ \text{ per ADC count}$$
-
-$$\text{Angle}_\text{raw} = \left( \frac{\text{ADC\_Value}}{4095.0} \right) \times 360.0^\circ$$
-
-$$\text{Angle}_\text{calibrated} = (\text{Angle}_\text{raw} - \text{Zero\_Offset} + 360.0^\circ) \bmod 360.0^\circ$$
-
----
-
-## 🌐 HTTP REST API Reference
-
-Base URL: `http://motionsimbot1.local:80` (or IP shown on OLED)
-
-| Endpoint | Method | Parameters | Description |
-|---|---|---|---|
-| `/api/stats` | `GET` | — | Returns JSON with current target vs actual angles, PID error, motor duties, packet rate, RSSI, and E-stop status |
-| `/api/pid` | `GET` | `kp`, `ki`, `kd` | Read or update PID loop gains live without rebooting |
-| `/api/calibrate` | `POST` | `motor_id` (1-3) | Set current physical position as joint 0° zero-reference point |
-| `/api/motor` | `GET` | `id`, `duty` (-1023 to 1023) | Manual motor duty override test (disables UDP mode until reset) |
-| `/api/estop` | `POST` | `state` (1 or 0) | Trigger or clear Emergency Stop (disables IBT-2 enable pin) |
-| `/api/oled` | `GET` | `mode` (`stats`, `angles`, `pid`, `wifi`) | Switch OLED diagnostic screen |
-| `/api/reboot` | `GET` | — | Soft reboot ESP32 |
-
----
-
-## 🛰️ UDP Motion Control Protocol
-
-- **Port**: `20777` (UDP)
-- **Frequency**: `60 Hz` (16.66 ms frame interval)
-- **Binary Packet Format** (16 bytes packed):
-
-```c
-typedef struct __attribute__((packed)) {
-    uint32_t magic;         // 0x4D53494D ("MSIM")
-    uint32_t seq;           // Sequence number
-    int16_t  target_deg1;   // Motor 1 target angle (deg * 10, e.g. 1800 = 180.0 deg)
-    int16_t  target_deg2;   // Motor 2 target angle
-    int16_t  target_deg3;   // Motor 3 target angle
-    uint16_t checksum;      // XOR checksum
-} motion_cmd_t;
+### 2. `/api/stats`
+```json
+{
+  "m1": { "target": 180.00, "actual": 180.05, "error": -0.05, "duty": -4, "inv": false },
+  "m2": { "target": 180.00, "actual": 0.00, "error": 0.00, "duty": 0, "inv": false },
+  "m3": { "target": 180.00, "actual": 0.00, "error": 0.00, "duty": 0, "inv": false },
+  "pid": { "kp": 8.50, "ki": 0.20, "kd": 1.20 },
+  "estop": false,
+  "estop_code": 0,
+  "estop_reason": "System Normal",
+  "auto_estop": true,
+  "armed": true,
+  "control_mode": 0,
+  "autotune": { "running": false, "status": "Idle" },
+  "as5600": {
+    "detected": true,
+    "magnet_ok": true,
+    "magnet_too_weak": false,
+    "magnet_too_strong": false,
+    "agc": 128,
+    "magnitude": 2400,
+    "raw": 2048,
+    "raw_deg": 180.00,
+    "cal_deg": 180.00,
+    "zero_offset": 0.00
+  },
+  "time": { "epoch": 1727045120, "synced": true },
+  "pkt_rate_hz": 60.0,
+  "rx_count": 1240,
+  "lost_count": 0,
+  "rssi": -52,
+  "ip": "192.168.1.145",
+  "version": "v1.0-bot"
+}
 ```
 
 ---
 
-## 🛡️ Closed-Loop PID Tuning & Safety System
+## 🚨 Multi-Hazard E-Stop Reason Codes
 
-1. **Anti-Windup & Output Clamping**:
-   - Max Motor Duty is hard-capped at **80% (819 / 1023)** to prevent driver overcurrent.
-   - PID integral accumulator is clamped to $\pm 300$ duty.
-2. **Directional Dead-Time**:
-   - 5 µs dead-time applied during direction flip (forward $\leftrightarrow$ reverse) to prevent shoot-through.
-3. **Safety Watchdog**:
-   - If no UDP motion command arrives for **>100 ms**, the safety watchdog trips.
-   - Motors smoothly ramp duty down to 0 and hold position.
+When an emergency stop occurs, `estop_code` and `estop_reason` identify the cause:
+
+| Code | Enumeration | Description |
+| :---: | :--- | :--- |
+| `0` | `ESTOP_REASON_NONE` | Normal operation. |
+| `1` | `ESTOP_REASON_HARDWARE` | Physical emergency stop button pressed on GPIO 18. |
+| `2` | `ESTOP_REASON_SOFTWARE` | Software E-stop clicked in WebUI or sent via API. |
+| `3` | `ESTOP_REASON_RUNAWAY` | **Auto:** Angle moved away from target while duty applied (e.g., reversed motor wiring). |
+| `4` | `ESTOP_REASON_STALL` | **Auto:** High duty (>25%) applied for >1.2 seconds with no actuator movement (jammed). |
+| `5` | `ESTOP_REASON_VELOCITY_JUMP` | **Auto:** Angle jump exceeded physical limit (>1500°/s in 10 ms; sensor glitch or magnet slip). |
+| `6` | `ESTOP_REASON_MAGNET_FAULT` | **Auto:** AS5600 magnetic status bit dropped (magnet missing, too weak, or detached). |
+| `7` | `ESTOP_REASON_LIMIT_EXCEEDED`| **Auto:** Angle exceeded configured software safety limit. |
+
+---
+
+## 🛠️ Step-by-Step Commissioning with cURL
+
+### 1. Check Sensor Health
+```bash
+curl http://motionsimbot1.local/api/angle?joint=1
+```
+
+### 2. Arm the Motors
+```bash
+curl -X POST http://motionsimbot1.local/api/arm?state=1
+```
+
+### 3. Test Motor Jog (25% duty for 400 ms)
+```bash
+curl -X POST "http://motionsimbot1.local/api/motor/jog?joint=1&duty=250&duration=400"
+```
+
+### 4. Invert Motor Polarity (if motor moved opposite to angle increase)
+```bash
+curl -X POST "http://motionsimbot1.local/api/motor/invert?joint=1&inverted=1"
+```
+
+### 5. Command Joint to 185.0°
+```bash
+curl -X POST "http://motionsimbot1.local/api/target?joint=1&angle=185.0"
+```
+
+### 6. Run PD Autocalibration
+```bash
+curl -X POST http://motionsimbot1.local/api/autotune?joint=1
+```
+
+### 7. Save Tuned Gains to Flash
+```bash
+curl -X POST http://motionsimbot1.local/api/pid/save
+```

@@ -22,21 +22,29 @@ static void estop_button_task(void *arg) {
         .pin_bit_mask = (1ULL << ESTOP_BTN_GPIO),
         .mode = GPIO_MODE_INPUT,
         .pull_up_en = GPIO_PULLUP_ENABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE,
     };
     gpio_config(&btn_cfg);
 
-    bool last_state = false;
+    vTaskDelay(pdMS_TO_TICKS(50));
+    bool last_state = (gpio_get_level(ESTOP_BTN_GPIO) == 0);
 
     while (1) {
         bool btn_pressed = (gpio_get_level(ESTOP_BTN_GPIO) == 0);
         if (btn_pressed != last_state) {
-            if (btn_pressed) {
-                ESP_LOGW(TAG, "Hardware Emergency Stop Button Pressed!");
-                motor_set_estop(true);
+            vTaskDelay(pdMS_TO_TICKS(20)); // Debounce
+            if ((gpio_get_level(ESTOP_BTN_GPIO) == 0) == btn_pressed) {
+                if (btn_pressed) {
+                    ESP_LOGW(TAG, "Hardware Emergency Stop Button Pressed!");
+                    pid_trigger_estop(ESTOP_REASON_HARDWARE, "Hardware Physical E-Stop Button Pressed");
+                } else {
+                    ESP_LOGI(TAG, "Hardware Emergency Stop Button Released.");
+                }
+                last_state = btn_pressed;
             }
-            last_state = btn_pressed;
         }
-        vTaskDelay(pdMS_TO_TICKS(20));
+        vTaskDelay(pdMS_TO_TICKS(50));
     }
 }
 
@@ -63,7 +71,7 @@ void app_main(void) {
     timekeep_start_scheduler();
 
     led_start_heartbeat(wifi_events, WIFI_CONNECTED_BIT);
-    xTaskCreate(estop_button_task, "estop_btn", 2048, NULL, 10, NULL);
+    xTaskCreate(estop_button_task, "estop_btn", 4096, NULL, 5, NULL);
 
     // Initialize 60 Hz Motion UDP Receiver
     motion_udp_init();

@@ -39,15 +39,12 @@
 #define MOTOR3_LPWM_GPIO    GPIO_NUM_16
 #define MOTOR_ENABLE_GPIO   GPIO_NUM_17
 
-// Hall sensors: GPIO 1/2/3 = ADC1 channels 0/1/2 on ESP32-S3.
-#define HALL_ADC_UNIT       ADC_UNIT_1
-#define HALL_JOINT1_ADC_CH  ADC_CHANNEL_0
-#define HALL_JOINT2_ADC_CH  ADC_CHANNEL_1
-#define HALL_JOINT3_ADC_CH  ADC_CHANNEL_2
+// Analog Hall sensors disabled — MotionSimBot uses AS5600 I2C magnetic encoders.
 
 // I2C bus pins (shared by AS5600 encoder and display).
-#define I2C_SDA_PIN         8
-#define I2C_SCL_PIN         9
+// GPIO 1 (SDA) and GPIO 2 (SCL) on the right header (pins labeled '1' and '2').
+#define I2C_SDA_PIN         1
+#define I2C_SCL_PIN         2
 #define AS5600_ADDR         0x36
 #define TCA9548A_ADDR       0x70
 
