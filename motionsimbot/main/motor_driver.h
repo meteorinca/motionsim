@@ -10,10 +10,12 @@
 
 void motor_driver_init(void);
 void motor_set_duty(int motor_id, int16_t duty);
+void motor_set_raw_duty(int motor_id, int16_t duty);
 void motor_stop_all(void);
 void motor_set_estop(bool estop);
 bool motor_get_estop(void);
 int16_t motor_get_duty(int motor_id);
+int16_t motor_get_logical_duty(int motor_id);
 void motor_arm(bool arm);
 bool motor_is_armed(void);
 

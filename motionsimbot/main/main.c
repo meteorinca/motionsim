@@ -7,6 +7,7 @@
 #include "motor_driver.h"
 #include "hall_sensor.h"
 #include "pid_controller.h"
+#include "serial_ctrl.h"
 #include "motion_udp.h"
 #include "nvs_flash.h"
 #include "esp_log.h"
@@ -63,6 +64,8 @@ void app_main(void) {
     // Initialize Motor Drivers & Sensors
     motor_driver_init();
     hall_sensor_init();
+    esp_err_t usb_err = serial_ctrl_init();
+    if (usb_err != ESP_OK) ESP_LOGE(TAG, "USB control unavailable: %s", esp_err_to_name(usb_err));
     pid_controller_init();
 
     // Start WiFi & Timekeeping

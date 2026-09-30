@@ -3,6 +3,7 @@
 #include "pid_controller.h"
 #include "motor_driver.h"
 #include "led.h"
+#include "serial_ctrl.h"
 #include <string.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -80,12 +81,13 @@ static void motion_rx_task(void *pvParameters) {
             xSemaphoreGive(s_mutex);
 
             // Update PID target angles (deg * 10 converted to float degrees)
+            if (serial_ctrl_owns_motion()) continue;
             pid_set_mode(PID_MODE_FOLLOW);
             pid_set_target_angle(1, (float)cmd.target_deg1 / 10.0f);
             pid_set_target_angle(2, (float)cmd.target_deg2 / 10.0f);
             pid_set_target_angle(3, (float)cmd.target_deg3 / 10.0f);
 
-            led_action_set(s_stats.rx_count % 2 == 0);
+            // LED refresh belongs to the low-priority heartbeat task.
         }
     }
 }
@@ -102,9 +104,11 @@ static void motion_watchdog_task(void *pvParameters) {
                 s_stats.pkt_rate_hz = 0.0f;
                 ESP_LOGW(TAG, "SAFETY WATCHDOG TRIPPED! Ramping motors to neutral position.");
                 // Return motors to center 180° neutral position
-                pid_set_target_angle(1, 180.0f);
-                pid_set_target_angle(2, 180.0f);
-                pid_set_target_angle(3, 180.0f);
+                if (!serial_ctrl_owns_motion()) {
+                    pid_set_target_angle(1, 180.0f);
+                    pid_set_target_angle(2, 180.0f);
+                    pid_set_target_angle(3, 180.0f);
+                }
             }
         }
         xSemaphoreGive(s_mutex);

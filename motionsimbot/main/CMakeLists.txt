@@ -3,14 +3,13 @@ set(COMMON_SRCS
     "motor_driver.c"
     "hall_sensor.c"
     "pid_controller.c"
+    "serial_ctrl.c"
     "motion_udp.c"
     "wifi_mgr.c"
     "webserver.c"
     "ota_mgr.c"
     "timekeep.c"
     "oled.c"
-    "i2c_bus.c"
-    "as5600.c"
     "buzzer.c"
     "led.c"
 )
@@ -21,6 +20,7 @@ idf_component_register(
                     "${CMAKE_SOURCE_DIR}/boards/${BOARD}"
     EMBED_TXTFILES  "index.html"
     PRIV_REQUIRES   esp_driver_gpio
+                    esp_driver_usb_serial_jtag
                     esp_driver_ledc
                     esp_adc
                     esp_wifi
@@ -32,7 +32,6 @@ idf_component_register(
                     mdns
                     esp_app_format
                     app_update
-                    esp_driver_i2c
                     esp_driver_rmt
                     led_strip
                     driver

@@ -75,7 +75,7 @@ Base URL: `http://motionsimbot1.local` (or device IP address)
   "lost_count": 0,
   "rssi": -52,
   "ip": "192.168.1.145",
-  "version": "v1.0-bot"
+  "version": "v0.3"
 }
 ```
 

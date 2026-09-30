@@ -2,7 +2,7 @@
 // ESP32-S3 MotionSimBot controller pin configuration.
 #pragma once
 
-#define FW_VERSION          "v1.0-bot"
+#define FW_VERSION          "v0.5"
 
 #define _XSTR(x) #x
 #define _STR(x) _XSTR(x)
@@ -39,18 +39,20 @@
 #define MOTOR3_LPWM_GPIO    GPIO_NUM_16
 #define MOTOR_ENABLE_GPIO   GPIO_NUM_17
 
-// Analog Hall sensors disabled — MotionSimBot uses AS5600 I2C magnetic encoders.
+// Analog potentiometer inputs (10kΩ single-turn, 0–3.3V → 0–360°).
+// ADC1 is used; GPIO maps: ch0=GPIO1, ch1=GPIO2, ch2=GPIO3.
+#define POT_ADC_UNIT        ADC_UNIT_1
+#define POT_JOINT1_ADC_CH   ADC_CHANNEL_0  // GPIO 1
+#define POT_JOINT2_ADC_CH   ADC_CHANNEL_1  // GPIO 2
+#define POT_JOINT3_ADC_CH   ADC_CHANNEL_2  // GPIO 3
 
-// I2C bus pins (shared by AS5600 encoder and display).
-// GPIO 1 (SDA) and GPIO 2 (SCL) on the right header (pins labeled '1' and '2').
-#define I2C_SDA_PIN         1
-#define I2C_SCL_PIN         2
-#define AS5600_ADDR         0x36
-#define TCA9548A_ADDR       0x70
+#define POT_JOINT1_GPIO     GPIO_NUM_1
+#define POT_JOINT2_GPIO     GPIO_NUM_2
+#define POT_JOINT3_GPIO     GPIO_NUM_3
 
-// SSD1306 I2C display.
-#define OLED_SDA_PIN        I2C_SDA_PIN
-#define OLED_SCL_PIN        I2C_SCL_PIN
+// SSD1306 I2C display (uses its own dedicated I2C bus init inside oled.c).
+#define OLED_SDA_PIN        8
+#define OLED_SCL_PIN        9
 #define OLED_ADDR           0x3C
 
 #define MAX_SCHEDULED_ACTIONS  8

@@ -19,6 +19,7 @@
 static bool s_estop = false;
 static bool s_armed = false;
 static int16_t s_current_duties[MOTOR_COUNT] = {0};
+static int16_t s_logical_duties[MOTOR_COUNT] = {0};
 static bool s_inverted[MOTOR_COUNT] = {false, false, false};
 static TimerHandle_t s_jog_timers[MOTOR_COUNT] = {NULL, NULL, NULL};
 static bool s_jogging[MOTOR_COUNT] = {false, false, false};
@@ -74,7 +75,7 @@ static void jog_timer_cb(TimerHandle_t xTimer) {
         motor_set_duty(idx + 1, 0);
 
         // When open-loop jog finishes, hold the new physical position
-        float curr = hall_read_angle(idx + 1);
+        float curr = pid_get_actual_angle(idx + 1);
         if (curr > 0.01f) {
             pid_set_target_angle(idx + 1, curr);
         }
@@ -149,6 +150,9 @@ void motor_set_duty(int motor_id, int16_t duty) {
         duty = 0;
     }
 
+    // Record pre-inversion logical duty commanded by controller
+    s_logical_duties[idx] = duty;
+
     // Apply polarity inversion if configured
     if (s_inverted[idx]) {
         duty = -duty;
@@ -158,29 +162,63 @@ void motor_set_duty(int motor_id, int16_t duty) {
     if (duty > MOTOR_CLAMP_DUTY) duty = MOTOR_CLAMP_DUTY;
     if (duty < -MOTOR_CLAMP_DUTY) duty = -MOTOR_CLAMP_DUTY;
 
+    if (s_current_duties[idx] == duty) return;
     s_current_duties[idx] = duty;
 
-    uint32_t rpwm = 0;
-    uint32_t lpwm = 0;
-
     if (duty > 0) {
-        rpwm = duty;
-        lpwm = 0;
+        ledc_set_duty(LEDC_LOW_SPEED_MODE, s_lpwm_channels[idx], 0);
+        ledc_update_duty(LEDC_LOW_SPEED_MODE, s_lpwm_channels[idx]);
+        ledc_set_duty(LEDC_LOW_SPEED_MODE, s_rpwm_channels[idx], (uint32_t)duty);
+        ledc_update_duty(LEDC_LOW_SPEED_MODE, s_rpwm_channels[idx]);
     } else if (duty < 0) {
-        rpwm = 0;
-        lpwm = -duty;
+        ledc_set_duty(LEDC_LOW_SPEED_MODE, s_rpwm_channels[idx], 0);
+        ledc_update_duty(LEDC_LOW_SPEED_MODE, s_rpwm_channels[idx]);
+        ledc_set_duty(LEDC_LOW_SPEED_MODE, s_lpwm_channels[idx], (uint32_t)(-duty));
+        ledc_update_duty(LEDC_LOW_SPEED_MODE, s_lpwm_channels[idx]);
+    } else {
+        ledc_set_duty(LEDC_LOW_SPEED_MODE, s_rpwm_channels[idx], 0);
+        ledc_update_duty(LEDC_LOW_SPEED_MODE, s_rpwm_channels[idx]);
+        ledc_set_duty(LEDC_LOW_SPEED_MODE, s_lpwm_channels[idx], 0);
+        ledc_update_duty(LEDC_LOW_SPEED_MODE, s_lpwm_channels[idx]);
+    }
+}
+
+void motor_set_raw_duty(int motor_id, int16_t duty) {
+    if (motor_id < 1 || motor_id > MOTOR_COUNT) return;
+    int idx = motor_id - 1;
+
+    // Direct hardware duty for polarity/autotune testing; blocked only by emergency stop
+    if (s_estop) {
+        duty = 0;
     }
 
-    ledc_set_duty(LEDC_LOW_SPEED_MODE, s_rpwm_channels[idx], rpwm);
-    ledc_update_duty(LEDC_LOW_SPEED_MODE, s_rpwm_channels[idx]);
+    if (duty > MOTOR_CLAMP_DUTY) duty = MOTOR_CLAMP_DUTY;
+    if (duty < -MOTOR_CLAMP_DUTY) duty = -MOTOR_CLAMP_DUTY;
 
-    ledc_set_duty(LEDC_LOW_SPEED_MODE, s_lpwm_channels[idx], lpwm);
-    ledc_update_duty(LEDC_LOW_SPEED_MODE, s_lpwm_channels[idx]);
+    s_current_duties[idx] = duty;
+
+    if (duty > 0) {
+        ledc_set_duty(LEDC_LOW_SPEED_MODE, s_lpwm_channels[idx], 0);
+        ledc_update_duty(LEDC_LOW_SPEED_MODE, s_lpwm_channels[idx]);
+        ledc_set_duty(LEDC_LOW_SPEED_MODE, s_rpwm_channels[idx], (uint32_t)duty);
+        ledc_update_duty(LEDC_LOW_SPEED_MODE, s_rpwm_channels[idx]);
+    } else if (duty < 0) {
+        ledc_set_duty(LEDC_LOW_SPEED_MODE, s_rpwm_channels[idx], 0);
+        ledc_update_duty(LEDC_LOW_SPEED_MODE, s_rpwm_channels[idx]);
+        ledc_set_duty(LEDC_LOW_SPEED_MODE, s_lpwm_channels[idx], (uint32_t)(-duty));
+        ledc_update_duty(LEDC_LOW_SPEED_MODE, s_lpwm_channels[idx]);
+    } else {
+        ledc_set_duty(LEDC_LOW_SPEED_MODE, s_rpwm_channels[idx], 0);
+        ledc_update_duty(LEDC_LOW_SPEED_MODE, s_rpwm_channels[idx]);
+        ledc_set_duty(LEDC_LOW_SPEED_MODE, s_lpwm_channels[idx], 0);
+        ledc_update_duty(LEDC_LOW_SPEED_MODE, s_lpwm_channels[idx]);
+    }
 }
 
 void motor_stop_all(void) {
     for (int i = 1; i <= MOTOR_COUNT; i++) {
         motor_set_duty(i, 0);
+        s_logical_duties[i - 1] = 0;
     }
 }
 
@@ -230,6 +268,11 @@ bool motor_get_estop(void) {
 int16_t motor_get_duty(int motor_id) {
     if (motor_id < 1 || motor_id > MOTOR_COUNT) return 0;
     return s_current_duties[motor_id - 1];
+}
+
+int16_t motor_get_logical_duty(int motor_id) {
+    if (motor_id < 1 || motor_id > MOTOR_COUNT) return 0;
+    return s_logical_duties[motor_id - 1];
 }
 
 void motor_set_inverted(int motor_id, bool inverted) {
@@ -285,7 +328,7 @@ void motor_jog_stop(int motor_id) {
     s_jogging[idx] = false;
     motor_set_duty(motor_id, 0);
 
-    float curr = hall_read_angle(motor_id);
+    float curr = pid_get_actual_angle(motor_id);
     if (curr > 0.01f) {
         pid_set_target_angle(motor_id, curr);
     }

@@ -3,11 +3,11 @@
 //  Board: ESP32-C3 MotionSimBot Controller
 //  Chip:  ESP32-C3
 //  Motors: 3× IBT-2 H-Bridges (24V 250W)
-//  Sensors: 3× 12-Bit Hall Angle Sensors (0.088° resolution)
+//  Sensors: 3× 10kΩ single-turn potentiometers (0–3.3V analog, 12-bit ADC)
 // ============================================================================
 #pragma once
 
-#define FW_VERSION          "v1.0-bot"
+#define FW_VERSION          "v0.5"
 
 #define _XSTR(x) #x
 #define _STR(x) _XSTR(x)
@@ -47,10 +47,15 @@
 // Hardware Enable Line (tied to all 3 IBT-2 R_EN + L_EN)
 #define MOTOR_ENABLE_GPIO   GPIO_NUM_4
 
-// ── 12-Bit Hall Angle Sensor ADC Channels (0-3.3V) ───────────────────────────
-#define HALL_ADC_UNIT       ADC_UNIT_1
-#define HALL_JOINT1_ADC_CH  ADC_CHANNEL_0  // GPIO 0
-#define HALL_JOINT2_ADC_CH  ADC_CHANNEL_1  // GPIO 1
+// ── Analog Potentiometer Inputs (10kΩ single-turn, 0–3.3V → 0–360°) ──────────
+#define POT_ADC_UNIT        ADC_UNIT_1
+#define POT_JOINT1_ADC_CH   ADC_CHANNEL_0  // GPIO 0
+#define POT_JOINT2_ADC_CH   ADC_CHANNEL_1  // GPIO 1
+#define POT_JOINT3_ADC_CH   ADC_CHANNEL_2  // GPIO 2
+
+#define POT_JOINT1_GPIO     GPIO_NUM_0
+#define POT_JOINT2_GPIO     GPIO_NUM_1
+#define POT_JOINT3_GPIO     GPIO_NUM_2
 
 // ── OLED Display (I2C) ───────────────────────────────────────────────────────
 #define OLED_SDA_PIN        7
