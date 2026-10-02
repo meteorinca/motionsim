@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Builds the motionsimbot ESP32-S3 firmware and outputs binaries to rdytoflashbin/
 
@@ -7,12 +7,22 @@
     compiles the project with idf.py, and copies all output binaries
     as well as generating a merged factory image in rdytoflashbin/.
 
+    The device number controls the mDNS hostname: motionsimbot<N>.local
+    (e.g. device 2 => motionsimbot2.local). Defaults to 1 if not specified.
+
+.PARAMETER DeviceNumber
+    The mDNS device number suffix (e.g. 1 => motionsimbot1.local). Defaults to 1.
+
 .EXAMPLE
-    .\buildbinesp32s3.ps1
+    .\buildbinesp32s3.ps1           # builds motionsimbot1.local
+    .\buildbinesp32s3.ps1 -DeviceNumber 2   # builds motionsimbot2.local
 #>
 
 [CmdletBinding()]
-param()
+param(
+    [Parameter(Mandatory=$false)]
+    [int]$DeviceNumber = -1
+)
 
 $ErrorActionPreference = "Stop"
 
@@ -23,6 +33,17 @@ $OutputDir  = Join-Path $ScriptDir "rdytoflashbin"
 Write-Host "========================================================" -ForegroundColor Cyan
 Write-Host "   MotionSimBot ESP32-S3 Firmware Build Pipeline" -ForegroundColor Cyan
 Write-Host "========================================================" -ForegroundColor Cyan
+
+# Prompt for device number if not supplied as a parameter
+if ($DeviceNumber -lt 1) {
+    $input = Read-Host "mDNS device number suffix (default: 1) => motionsimbot<N>.local"
+    if ([string]::IsNullOrWhiteSpace($input)) {
+        $DeviceNumber = 1
+    } else {
+        $DeviceNumber = [int]$input
+    }
+}
+Write-Host "--> Building for: motionsimbot$DeviceNumber.local" -ForegroundColor Magenta
 
 # 1. Locate ESP-IDF PowerShell activation profile
 $IdfProfile = $null
@@ -57,8 +78,9 @@ try {
         idf.py set-target esp32s3
     }
 
-    Write-Host "-> Compiling motionsimbot firmware with idf.py build..." -ForegroundColor Green
-    idf.py build
+    Write-Host "-> Compiling motionsimbot firmware (DEVICE_NUMBER=$DeviceNumber)..." -ForegroundColor Green
+    $DeviceArg = "-DDEVICE_NUMBER=$DeviceNumber"
+    idf.py build $DeviceArg
     if ($LASTEXITCODE -ne 0) {
         throw "Firmware build failed with exit code $LASTEXITCODE"
     }
@@ -84,11 +106,12 @@ try {
         0xe000 "$OutputDir/ota_data_initial.bin" `
         0x20000 "$OutputDir/motionsimbot.bin"
 
-    Write-Host "`n[SUCCESS] Build complete! Binaries ready in: $OutputDir" -ForegroundColor Green
+    Write-Host "`n[SUCCESS] Build complete! motionsimbot$DeviceNumber.local binaries ready in: $OutputDir" -ForegroundColor Green
     Get-ChildItem -Path $OutputDir | Select-Object Name, Length, LastWriteTime | Format-Table -AutoSize
 
     Write-Host "To flash to ESP32-S3 run:" -ForegroundColor Yellow
     Write-Host "  .\flashbinesp32s3.ps1 COM9" -ForegroundColor White
+    Write-Host "  => Device will appear at: http://motionsimbot$DeviceNumber.local/" -ForegroundColor Cyan
 }
 finally {
     Pop-Location

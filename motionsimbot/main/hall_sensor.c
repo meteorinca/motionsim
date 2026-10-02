@@ -22,8 +22,14 @@
 #define TAG             "POT_SENSOR"
 #define NVS_NAMESPACE   "pot_cal"
 
-// EMA filter coefficient (0 = no filter, 1 = no update)
-#define EMA_ALPHA       0.5f
+// EMA filter coefficient (lower = smoother; 0 = frozen, 1 = no filter)
+#define EMA_ALPHA       0.3f
+
+// Spike rejection: maximum allowed angle change per tick (~10ms).
+// Anything larger is treated as sensor noise and the previous value is held.
+#define MAX_SLEW_DEG            15.0f
+// After this many consecutive rejections, accept anyway (genuine fast motion).
+#define MAX_CONSECUTIVE_REJECTS 3
 
 static adc_oneshot_unit_handle_t s_adc_handle = NULL;
 
@@ -44,6 +50,10 @@ static float   s_zero_offsets[JOINT_COUNT] = {0.0f, 0.0f, 0.0f};
 static float   s_ema_angles[JOINT_COUNT]   = {0.0f, 0.0f, 0.0f};
 static bool    s_ema_initialized[JOINT_COUNT] = {false, false, false};
 static bool    s_connected[JOINT_COUNT]       = {false, false, false};
+static uint16_t s_last_raw[JOINT_COUNT]       = {0, 0, 0};
+static float   s_last_good_angle[JOINT_COUNT] = {0.0f, 0.0f, 0.0f};
+static bool    s_raw_initialized[JOINT_COUNT] = {false, false, false};
+static int     s_reject_count[JOINT_COUNT]    = {0, 0, 0};
 
 // ---------------------------------------------------------------------------
 // NVS persistence
@@ -111,20 +121,57 @@ void hall_sensor_init(void) {
              (int)s_adc_channels[0], (int)s_adc_channels[1], (int)s_adc_channels[2]);
 }
 
+// ---------------------------------------------------------------------------
+// Median-of-5 ADC pre-filter: takes 5 rapid samples and returns the median.
+// Completely rejects single-sample outlier spikes (wiper bounce, noise).
+// ---------------------------------------------------------------------------
+static int median_adc_read(adc_channel_t channel) {
+    int samples[5];
+    int valid = 0;
+    for (int s = 0; s < 5; s++) {
+        int raw = 0;
+        if (adc_oneshot_read(s_adc_handle, channel, &raw) == ESP_OK) {
+            samples[valid++] = raw;
+        }
+    }
+    if (valid == 0) return -1; // All reads failed
+    // Simple insertion sort (n<=5, negligible cost)
+    for (int i = 1; i < valid; i++) {
+        int key = samples[i];
+        int j = i - 1;
+        while (j >= 0 && samples[j] > key) {
+            samples[j + 1] = samples[j];
+            j--;
+        }
+        samples[j + 1] = key;
+    }
+    return samples[valid / 2]; // Median
+}
+
 uint16_t hall_read_raw(int joint_id) {
     if (joint_id < 1 || joint_id > JOINT_COUNT || !s_adc_handle) return 0;
-    int raw = 0;
-    if (adc_oneshot_read(s_adc_handle, s_adc_channels[joint_id - 1], &raw) != ESP_OK) return 0;
-    return (uint16_t)(raw < 0 ? 0 : (raw > 4095 ? 4095 : raw));
+    int idx = joint_id - 1;
+    int raw = median_adc_read(s_adc_channels[idx]);
+    if (raw < 0) {
+        // All ADC reads failed — return last known good value
+        return s_raw_initialized[idx] ? s_last_raw[idx] : 0;
+    }
+    if (raw > 4095) raw = 4095;
+    s_last_raw[idx] = (uint16_t)raw;
+    s_raw_initialized[idx] = true;
+    return (uint16_t)raw;
 }
 
 float hall_read_angle(int joint_id) {
-    if (joint_id < 1 || joint_id > JOINT_COUNT || !s_adc_handle) return 0.0f;
+    if (joint_id < 1 || joint_id > JOINT_COUNT) return 0.0f;
     int idx = joint_id - 1;
+    if (!s_adc_handle) return s_last_good_angle[idx];
 
-    int raw_int = 0;
-    if (adc_oneshot_read(s_adc_handle, s_adc_channels[idx], &raw_int) != ESP_OK) return 0.0f;
-    if (raw_int < 0) raw_int = 0;
+    int raw_int = median_adc_read(s_adc_channels[idx]);
+    if (raw_int < 0) {
+        // All ADC reads failed — return last known good angle
+        return s_last_good_angle[idx];
+    }
     if (raw_int > 4095) raw_int = 4095;
 
     // Convert raw ADC → degrees with zero offset
@@ -134,10 +181,27 @@ float hall_read_angle(int joint_id) {
     while (angle < 0.0f)    angle += 360.0f;
     while (angle >= 360.0f) angle -= 360.0f;
 
+    // Spike rejection: if the new sample jumps more than MAX_SLEW_DEG from
+    // the last accepted value, reject it and hold previous. After
+    // MAX_CONSECUTIVE_REJECTS in a row, accept anyway (genuine fast motion).
+    if (s_ema_initialized[idx]) {
+        float slew = angle - s_ema_angles[idx];
+        while (slew >  180.0f) slew -= 360.0f;
+        while (slew < -180.0f) slew += 360.0f;
+        if (fabsf(slew) > MAX_SLEW_DEG && s_reject_count[idx] < MAX_CONSECUTIVE_REJECTS) {
+            s_reject_count[idx]++;
+            ESP_LOGD(TAG, "J%d spike rejected: %.1f deg jump (reject #%d)",
+                     idx + 1, slew, s_reject_count[idx]);
+            return s_ema_angles[idx]; // Hold previous filtered value
+        }
+        s_reject_count[idx] = 0; // Reset on accepted sample
+    }
+
     // Circular EMA to smooth ADC noise without 0/360° wrap glitch
     if (!s_ema_initialized[idx]) {
         s_ema_angles[idx]     = angle;
         s_ema_initialized[idx] = true;
+        s_last_good_angle[idx] = angle;
         return angle;
     }
     float diff = angle - s_ema_angles[idx];
@@ -148,6 +212,7 @@ float hall_read_angle(int joint_id) {
     while (s_ema_angles[idx] <    0.0f)  s_ema_angles[idx] += 360.0f;
     while (s_ema_angles[idx] >= 360.0f)  s_ema_angles[idx] -= 360.0f;
 
+    s_last_good_angle[idx] = s_ema_angles[idx];
     return s_ema_angles[idx];
 }
 
@@ -155,13 +220,13 @@ void hall_calibrate_zero(int joint_id) {
     if (joint_id < 1 || joint_id > JOINT_COUNT || !s_adc_handle) return;
     int idx = joint_id - 1;
 
-    int raw_int = 0;
-    if (adc_oneshot_read(s_adc_handle, s_adc_channels[idx], &raw_int) != ESP_OK) return;
-    if (raw_int < 0) raw_int = 0;
+    int raw_int = median_adc_read(s_adc_channels[idx]);
+    if (raw_int < 0) return;
     if (raw_int > 4095) raw_int = 4095;
 
     s_zero_offsets[idx] = (float)raw_int * POT_DEG_PER_COUNT;
     s_ema_initialized[idx] = false; // Re-seed EMA after zero change
+    s_reject_count[idx] = 0;       // Reset spike rejection state
     save_nvs_offset(idx);
     ESP_LOGI(TAG, "Joint %d zeroed at raw=%d (%.2f deg)", joint_id, raw_int, s_zero_offsets[idx]);
 }

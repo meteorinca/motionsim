@@ -216,6 +216,70 @@
       border-color: #7c6af7;
     }
 
+    /* Joint Cards Container */
+    .joint-cards-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+      width: 100%;
+      margin-bottom: 14px;
+    }
+    @media (min-width: 600px) {
+      .joint-cards-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    /* Advanced Dropdown Panel */
+    details.adv-panel {
+      width: 100%;
+      margin-bottom: 14px;
+      border-radius: 14px;
+      border: 1px solid #1e1e3a;
+      background: #11112a;
+      overflow: hidden;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.3);
+    }
+    details.adv-panel summary {
+      padding: 13px 16px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #7c6af7;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #141432;
+      user-select: none;
+      outline: none;
+      transition: background 0.2s ease, color 0.2s ease;
+    }
+    details.adv-panel summary:hover {
+      background: #1b1b42;
+      color: #9d8ffb;
+    }
+    details.adv-panel summary::-webkit-details-marker {
+      display: none;
+    }
+    details.adv-panel[open] summary {
+      border-bottom: 1px solid #1e1e3a;
+      background: #161638;
+    }
+    .adv-content {
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .adv-content .card {
+      background: #0d0d22;
+      border: 1px solid #1a1a36;
+      margin-bottom: 0;
+      box-shadow: none;
+    }
+
     /* Angle Telemetry Display */
     .telem-grid {
       display: grid;
@@ -334,204 +398,264 @@
       </div>
     </div>
 
-    <!-- Live Telemetry Card -->
-    <div class="card">
-      <h2>Joint 1 (Roll) Angle Feedback <span id="sensor-badge" class="badge green">Checking...</span></h2>
-      <div class="telem-grid">
-        <div class="telem-box">
-          <div class="telem-lbl">Actual Angle</div>
-          <div class="telem-val" id="j1-actual" style="color:#d946ef;">0.00°</div>
-          <div class="telem-sub">Raw ADC: <span id="j1-raw">0</span></div>
-        </div>
-        <div class="telem-box">
-          <div class="telem-lbl">Target Angle</div>
-          <div class="telem-val" id="j1-target" style="color:#00f0ff;">180.00°</div>
-          <div class="telem-sub">Error: <span id="j1-err">0.00°</span></div>
-        </div>
-        <div class="telem-box full" style="display:flex; justify-content:space-between; align-items:center; padding:10px 14px;">
-          <div>
-            <span style="font-size:11px; color:#8888aa; font-weight:700;">PWM EFFORT: </span>
-            <span id="j1-duty" style="font-size:16px; font-weight:800; font-family:monospace; color:#f59e0b;">0</span>
-            <span style="font-size:10px; color:#555;"> / 819</span>
+    <!-- Joint Telemetry & Primary Controls Grid (Roll & Pitch) -->
+    <div class="joint-cards-grid">
+      <!-- Joint 1 (Roll) Card -->
+      <div class="card" style="margin-bottom:0;">
+        <h2>
+          <span>Joint 1 (Roll)</span>
+          <span id="sensor-badge" class="badge green">Checking...</span>
+        </h2>
+        <div class="telem-grid">
+          <div class="telem-box">
+            <div class="telem-lbl">Actual Angle</div>
+            <div class="telem-val" id="j1-actual" style="color:#d946ef;">0.00°</div>
+            <div class="telem-sub">Raw: <span id="j1-raw">0</span></div>
           </div>
-          <div>
-            <button onclick="calibrateZero(1)" style="padding:5px 10px; font-size:11px;">Set Zero (0°)</button>
+          <div class="telem-box">
+            <div class="telem-lbl">Target Angle</div>
+            <div class="telem-val" id="j1-target" style="color:#00f0ff;">180.00°</div>
+            <div class="telem-sub">Err: <span id="j1-err">0.00°</span></div>
+          </div>
+          <div class="telem-box full" style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px;">
+            <div>
+              <span style="font-size:11px; color:#8888aa; font-weight:700;">PWM: </span>
+              <span id="j1-duty" style="font-size:15px; font-weight:800; font-family:monospace; color:#f59e0b;">0</span>
+              <span style="font-size:10px; color:#555;"> / 819</span>
+            </div>
+            <button onclick="calibrateZero(1)" style="padding:4px 9px; font-size:11px;">Set Zero (0°)</button>
+          </div>
+        </div>
+        <!-- Joint 1 Manual Jog & Polarity -->
+        <div style="margin-top:10px; padding-top:8px; border-top:1px solid #1a1a36;">
+          <div style="font-size:10px; font-weight:700; color:#8888aa; text-transform:uppercase; margin-bottom:6px;">Manual Jog (Open-Loop)</div>
+          <div class="btn-row" style="margin-top:0; gap:5px;">
+            <button onclick="jogMotor(1, -200, 250)" style="padding:6px 10px; font-size:11px;">◀ REV</button>
+            <button onclick="jogMotor(1, 0, 0)" style="padding:6px 10px; font-size:11px; border-color:#ff3366; color:#ff3366;">STOP</button>
+            <button onclick="jogMotor(1, 200, 250)" style="padding:6px 10px; font-size:11px;">FWD ▶</button>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+            <label style="font-size:11px; display:flex; align-items:center; gap:6px; cursor:pointer;">
+              <input type="checkbox" id="inv-check" onchange="toggleInversion(1)">
+              <span>Invert Polarity</span>
+            </label>
+            <span class="badge" id="inv-badge" style="font-size:9px;">Normal</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Joint 2 (Pitch) Card -->
+      <div class="card" style="margin-bottom:0;">
+        <h2>
+          <span>Joint 2 (Pitch)</span>
+          <span id="j2-sensor-badge" class="badge green">Checking...</span>
+        </h2>
+        <div class="telem-grid">
+          <div class="telem-box">
+            <div class="telem-lbl">Actual Angle</div>
+            <div class="telem-val" id="j2-actual" style="color:#38bdf8;">0.00°</div>
+            <div class="telem-sub">Raw: <span id="j2-raw">0</span></div>
+          </div>
+          <div class="telem-box">
+            <div class="telem-lbl">Target Angle</div>
+            <div class="telem-val" id="j2-target" style="color:#00f0ff;">180.00°</div>
+            <div class="telem-sub">Err: <span id="j2-err">0.00°</span></div>
+          </div>
+          <div class="telem-box full" style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px;">
+            <div>
+              <span style="font-size:11px; color:#8888aa; font-weight:700;">PWM: </span>
+              <span id="j2-duty" style="font-size:15px; font-weight:800; font-family:monospace; color:#f59e0b;">0</span>
+              <span style="font-size:10px; color:#555;"> / 819</span>
+            </div>
+            <button onclick="calibrateZero(2)" style="padding:4px 9px; font-size:11px;">Set Zero (0°)</button>
+          </div>
+        </div>
+        <!-- Joint 2 Manual Jog & Polarity -->
+        <div style="margin-top:10px; padding-top:8px; border-top:1px solid #1a1a36;">
+          <div style="font-size:10px; font-weight:700; color:#8888aa; text-transform:uppercase; margin-bottom:6px;">Manual Jog (Open-Loop)</div>
+          <div class="btn-row" style="margin-top:0; gap:5px;">
+            <button onclick="jogMotor(2, -200, 250)" style="padding:6px 10px; font-size:11px;">◀ REV</button>
+            <button onclick="jogMotor(2, 0, 0)" style="padding:6px 10px; font-size:11px; border-color:#ff3366; color:#ff3366;">STOP</button>
+            <button onclick="jogMotor(2, 200, 250)" style="padding:6px 10px; font-size:11px;">FWD ▶</button>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+            <label style="font-size:11px; display:flex; align-items:center; gap:6px; cursor:pointer;">
+              <input type="checkbox" id="inv2-check" onchange="toggleInversion(2)">
+              <span>Invert Polarity</span>
+            </label>
+            <span class="badge" id="inv2-badge" style="font-size:9px;">Normal</span>
           </div>
         </div>
       </div>
     </div>
 
-    <div class="card">
-      <h2>Potentiometer and Control Diagnostics</h2>
-      <p id="encoder-health">Waiting for sensor status...</p>
-      <p>Disarm and hold the shaft still for the stationary check. This reads the ADC and does not command motion.</p>
-      <div class="btn-row">
-        <button id="encoder-check-btn" onclick="checkEncoder()">10-second Stationary Sensor Check</button>
-        <button onclick="downloadDiagnostics()">Download Diagnostics</button>
-      </div>
-      <p id="encoder-check-result"></p>
-      <p>Download immediately after failed calibration or E-stop, before sending another target. Includes Joint 1 control history; PWM values are software commands, not electrical measurements.</p>
-    </div>
+    <!-- Collapsible Advanced Controls & Extra Telemetry Dropdown -->
+    <details class="adv-panel" id="adv-details" ontoggle="onAdvToggle(this.open)">
+      <summary>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:15px;">⚙️</span>
+          <span>Advanced Diagnostics & Controller Tuning</span>
+        </div>
+        <span id="adv-status-badge" class="badge">Click to Expand</span>
+      </summary>
+      <div class="adv-content">
 
-    <div class="card">
-      <h2>USB Control and Telemetry</h2>
-      <p>Use the board's native USB port. Control and telemetry start disabled after boot. Enabling telemetry alone does not move motors.</p>
-      <label><input type="checkbox" id="usb-control"> Use USB motion commands</label>
-      <label><input type="checkbox" id="usb-telemetry"> Send USB telemetry</label>
-      <label>Telemetry Hz <input type="number" id="usb-hz" min="1" max="100" value="100"></label>
-      <button onclick="configureUsb()">Apply USB Settings</button>
-      <p id="usb-status">Waiting for USB status...</p>
-      <p id="loop-timing"></p>
-      <p>USB motion mode excludes UDP and Web UI targets. A command gap over 100 ms disarms motors and requires USB settings to be applied again. Changing USB control settings starts a new command session.</p>
-    </div>
+        <!-- Live Waveform Telemetry (Oscilloscope) Card -->
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+            <h2 style="margin-bottom:0;">Live Waveform Telemetry</h2>
+            <label style="font-size:12px; font-weight:700; color:#38bdf8; display:flex; align-items:center; gap:8px; cursor:pointer; background:#161635; padding:5px 12px; border-radius:8px; border:1px solid #2a2a50;">
+              <input type="checkbox" id="plot-toggle" onchange="togglePlot(this.checked)">
+              <span>📈 Enable Live Oscilloscope (Off)</span>
+            </label>
+          </div>
+          <div class="plot-container" id="plot-wrapper" style="display:none;">
+            <canvas id="scope"></canvas>
+            <div class="plot-legend">
+              <div class="legend-item"><div class="dot" style="background:#00f0ff;"></div> <span>Target Angle</span></div>
+              <div class="legend-item"><div class="dot" style="background:#00e5a0; border: 1px dashed #fff;"></div> <span>Smooth Profile</span></div>
+              <div class="legend-item"><div class="dot" style="background:#d946ef;"></div> <span>Actual Angle (Pot)</span></div>
+              <div class="legend-item"><div class="dot" style="background:#f59e0b;"></div> <span>Motor Duty</span></div>
+            </div>
+          </div>
 
-    <!-- Open-Loop Manual Jogging Card -->
-    <div class="card">
-      <h2>Open-Loop Jogging (Always Works) <span class="badge" id="inv-badge">Polarity Normal</span></h2>
-      <div style="font-size:12px; color:#8888aa; margin-bottom:10px;">
-        Immediate open-loop steps to test movement or position the motor without closed-loop interference:
-      </div>
-      <div class="btn-row" style="align-items:center;">
-        <button onclick="jogMotor(1, -160, 250)">◀ Slow REV (15%)</button>
-        <button onclick="jogMotor(1, -260, 350)">◀ Step REV (25%)</button>
-        <button onclick="jogMotor(1, 0, 0)" style="border-color:#ff3366; color:#ff3366;">STOP</button>
-        <button onclick="jogMotor(1, 260, 350)">Step FWD (25%) ▶</button>
-        <button onclick="jogMotor(1, 160, 250)">Slow FWD (15%) ▶</button>
-      </div>
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; padding-top:10px; border-top:1px solid #1e1e3a; flex-wrap:wrap; gap:8px;">
-        <label style="font-size:12px; display:flex; align-items:center; gap:8px; cursor:pointer;">
-          <input type="checkbox" id="inv-check" onchange="toggleInversion(1)">
-          <span>Invert Motor 1 Polarity (Reverse Direction)</span>
-        </label>
-        <button onclick="startAutodetect(1)" style="padding:5px 10px; font-size:11px; border-color:#38bdf8; color:#38bdf8;">🔄 Auto-Detect Polarity</button>
-      </div>
-    </div>
+          <!-- Quick Step Test Buttons -->
+          <div style="margin-top:12px;">
+            <div style="font-size:11px; font-weight:700; color:#8888aa; text-transform:uppercase; margin-bottom:6px;">Closed-Loop Step Angle Tests</div>
+            <div class="btn-row">
+              <button onclick="stepTarget(-10)">-10°</button>
+              <button onclick="stepTarget(-5)">-5°</button>
+              <button onclick="setTargetAngle(180, 1)">180° Center</button>
+              <button onclick="stepTarget(5)">+5°</button>
+              <button onclick="stepTarget(10)">+10°</button>
+            </div>
+            <div style="display:flex; gap:8px; margin-top:8px; align-items:center;">
+              <input type="number" id="cmd-angle" placeholder="Angle (°)" value="180.0" step="0.5" style="width:110px;">
+              <button class="btn-primary" onclick="cmdTargetFromInput()">Go to Angle (J1)</button>
+              <button onclick="setTargetAngle(parseFloat(document.getElementById('cmd-angle').value), 2)">Go to Angle (J2)</button>
+            </div>
+          </div>
+        </div>
 
-    <!-- Pretty Plots (Real-Time Oscilloscope) -->
-    <div class="card">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
-        <h2 style="margin-bottom:0;">Live Waveform Telemetry</h2>
-        <label style="font-size:12px; font-weight:700; color:#38bdf8; display:flex; align-items:center; gap:8px; cursor:pointer; background:#161635; padding:5px 12px; border-radius:8px; border:1px solid #2a2a50;">
-          <input type="checkbox" id="plot-toggle" onchange="togglePlot(this.checked)">
-          <span>📈 Enable Live Oscilloscope (Off)</span>
-        </label>
-      </div>
-      <div class="plot-container" id="plot-wrapper" style="display:none;">
-        <canvas id="scope"></canvas>
-        <div class="plot-legend">
-          <div class="legend-item"><div class="dot" style="background:#00f0ff;"></div> <span>Target Angle</span></div>
-          <div class="legend-item"><div class="dot" style="background:#00e5a0; border: 1px dashed #fff;"></div> <span>Smooth Profile</span></div>
-          <div class="legend-item"><div class="dot" style="background:#d946ef;"></div> <span>Actual Angle (Pot)</span></div>
-          <div class="legend-item"><div class="dot" style="background:#f59e0b;"></div> <span>Motor Duty</span></div>
-        </div>
-      </div>
+        <!-- Precision Trapezoidal & PID Closed-Loop Tuning Card -->
+        <div class="card">
+          <h2>Precision Trapezoidal & PID Tuning</h2>
+          
+          <!-- Quick Calibration Presets -->
+          <div style="display:flex; gap:6px; margin-bottom:12px; align-items:center; flex-wrap:wrap;">
+            <span style="font-size:11px; color:#8888aa; font-weight:700; text-transform:uppercase;">Presets:</span>
+            <button onclick="applyPreset('smooth')" style="padding:4px 9px; font-size:11px;">🌱 Smooth</button>
+            <button onclick="applyPreset('balanced')" style="padding:4px 9px; font-size:11px; border-color:#7c6af7; color:#7c6af7;">⚖️ Balanced (Default)</button>
+            <button onclick="applyPreset('fast')" style="padding:4px 9px; font-size:11px; border-color:#00e5a0; color:#00e5a0;">⚡ Fast Sim</button>
+          </div>
 
-      <!-- Quick Step Test Buttons -->
-      <div style="margin-top:12px;">
-        <div style="font-size:11px; font-weight:700; color:#8888aa; text-transform:uppercase; margin-bottom:6px;">Closed-Loop Step Angle Tests</div>
-        <div class="btn-row">
-          <button onclick="stepTarget(-10)">-10°</button>
-          <button onclick="stepTarget(-5)">-5°</button>
-          <button onclick="setTargetAngle(180)">180° Center</button>
-          <button onclick="stepTarget(5)">+5°</button>
-          <button onclick="stepTarget(10)">+10°</button>
-        </div>
-        <div style="display:flex; gap:8px; margin-top:8px; align-items:center;">
-          <input type="number" id="cmd-angle" placeholder="Angle (°)" value="180.0" step="0.5" style="width:110px;">
-          <button class="btn-primary" onclick="cmdTargetFromInput()">Go to Angle</button>
-        </div>
-      </div>
-    </div>
+          <!-- Row 1: Core Gains -->
+          <div style="display:flex; gap:8px; margin-bottom:10px;">
+            <div style="flex:1;">
+              <label style="font-size:11px; color:#8888aa; font-weight:700;">Kp (Stiffness)</label>
+              <input type="number" id="kp" step="0.5" value="14.0" style="width:100%; margin-top:3px;">
+            </div>
+            <div style="flex:1;">
+              <label style="font-size:11px; color:#8888aa; font-weight:700;">Ki (Integral)</label>
+              <input type="number" id="ki" step="0.05" value="0.20" style="width:100%; margin-top:3px;">
+            </div>
+            <div style="flex:1;">
+              <label style="font-size:11px; color:#8888aa; font-weight:700;">Kd (Damping)</label>
+              <input type="number" id="kd" step="0.1" value="1.0" style="width:100%; margin-top:3px;">
+            </div>
+            <div style="flex:1;">
+              <label style="font-size:11px; color:#8888aa; font-weight:700;">Kff (Feedforward)</label>
+              <input type="number" id="kff" step="0.5" value="3.5" style="width:100%; margin-top:3px;">
+            </div>
+          </div>
 
-    <!-- Closed-Loop PD/PID Controller & Autotune Card -->
-    <div class="card">
-      <h2>Precision Trapezoidal & PID Closed-Loop Tuning</h2>
-      
-      <!-- Quick Calibration Presets -->
-      <div style="display:flex; gap:6px; margin-bottom:12px; align-items:center; flex-wrap:wrap;">
-        <span style="font-size:11px; color:#8888aa; font-weight:700; text-transform:uppercase;">Presets:</span>
-        <button onclick="applyPreset('smooth')" style="padding:4px 9px; font-size:11px;">🌱 Smooth</button>
-        <button onclick="applyPreset('balanced')" style="padding:4px 9px; font-size:11px; border-color:#7c6af7; color:#7c6af7;">⚖️ Balanced (Default)</button>
-        <button onclick="applyPreset('fast')" style="padding:4px 9px; font-size:11px; border-color:#00e5a0; color:#00e5a0;">⚡ Fast Sim</button>
-      </div>
+          <!-- Row 2: Motion Profile Ramps -->
+          <div style="display:flex; gap:8px; margin-bottom:10px;">
+            <div style="flex:1;">
+              <label style="font-size:11px; color:#8888aa; font-weight:700;">Cruise Spd (°/s)</label>
+              <input type="number" id="max_speed" step="5" value="40.0" style="width:100%; margin-top:3px;">
+            </div>
+            <div style="flex:1;">
+              <label style="font-size:11px; color:#8888aa; font-weight:700;">Accel/Decel (°/s²)</label>
+              <input type="number" id="max_accel" step="10" value="80.0" style="width:100%; margin-top:3px;">
+            </div>
+            <div style="flex:1;">
+              <label style="font-size:11px; color:#8888aa; font-weight:700;">Min Duty (Stiction)</label>
+              <input type="number" id="min_duty" step="5" value="85" style="width:100%; margin-top:3px;">
+            </div>
+            <div style="flex:1;">
+              <label style="font-size:11px; color:#8888aa; font-weight:700;">Deadband (°)</label>
+              <input type="number" id="deadband" step="0.05" value="0.25" style="width:100%; margin-top:3px;">
+            </div>
+          </div>
 
-      <!-- Row 1: Core Gains -->
-      <div style="display:flex; gap:8px; margin-bottom:10px;">
-        <div style="flex:1;">
-          <label style="font-size:11px; color:#8888aa; font-weight:700;">Kp (Stiffness)</label>
-          <input type="number" id="kp" step="0.5" value="14.0" style="width:100%; margin-top:3px;">
-        </div>
-        <div style="flex:1;">
-          <label style="font-size:11px; color:#8888aa; font-weight:700;">Ki (Integral)</label>
-          <input type="number" id="ki" step="0.05" value="0.20" style="width:100%; margin-top:3px;">
-        </div>
-        <div style="flex:1;">
-          <label style="font-size:11px; color:#8888aa; font-weight:700;">Kd (Damping)</label>
-          <input type="number" id="kd" step="0.1" value="1.0" style="width:100%; margin-top:3px;">
-        </div>
-        <div style="flex:1;">
-          <label style="font-size:11px; color:#8888aa; font-weight:700;">Kff (Feedforward)</label>
-          <input type="number" id="kff" step="0.5" value="3.5" style="width:100%; margin-top:3px;">
-        </div>
-      </div>
+          <!-- Row 3: Safety Clamps & Limits -->
+          <div style="display:flex; gap:8px; margin-bottom:12px;">
+            <div style="flex:1;">
+              <label style="font-size:11px; color:#8888aa; font-weight:700;">Max Duty Clamp</label>
+              <input type="number" id="max_duty" step="25" value="700" style="width:100%; margin-top:3px;">
+            </div>
+            <div style="flex:1;">
+              <label style="font-size:11px; color:#8888aa; font-weight:700;">Soft Min (°)</label>
+              <input type="number" id="soft_min" step="5" value="0.0" style="width:100%; margin-top:3px;">
+            </div>
+            <div style="flex:1;">
+              <label style="font-size:11px; color:#8888aa; font-weight:700;">Soft Max (°)</label>
+              <input type="number" id="soft_max" step="5" value="360.0" style="width:100%; margin-top:3px;">
+            </div>
+          </div>
 
-      <!-- Row 2: Motion Profile Ramps -->
-      <div style="display:flex; gap:8px; margin-bottom:10px;">
-        <div style="flex:1;">
-          <label style="font-size:11px; color:#8888aa; font-weight:700;">Cruise Spd (°/s)</label>
-          <input type="number" id="max_speed" step="5" value="40.0" style="width:100%; margin-top:3px;">
+          <div class="btn-row">
+            <button class="btn-primary" onclick="setPid()">Apply Settings</button>
+            <button onclick="savePid()">💾 Save to Flash</button>
+            <button onclick="startAutodetect(1)" style="border-color:#38bdf8; color:#38bdf8;">🔄 Auto-Detect J1</button>
+            <button onclick="startAutotune(1)" style="border-color:#00e5a0; color:#00e5a0;">⚡ Multi-point PID Tune</button>
+          </div>
+          <p style="font-size:12px; color:#aaa; margin-top:8px;">Polarity detection checks direction. PID tuning measures +/-5, 10 and 15 degrees, then validates candidate gains. Results apply in RAM; Save to Flash keeps them after restart.</p>
+          <button onclick="stopAutotune()" style="margin-top:8px;">Stop Calibration</button>
+          <div id="tune-msg" class="ok-msg" style="display:none;"></div>
         </div>
-        <div style="flex:1;">
-          <label style="font-size:11px; color:#8888aa; font-weight:700;">Accel/Decel (°/s²)</label>
-          <input type="number" id="max_accel" step="10" value="80.0" style="width:100%; margin-top:3px;">
-        </div>
-        <div style="flex:1;">
-          <label style="font-size:11px; color:#8888aa; font-weight:700;">Min Duty (Stiction)</label>
-          <input type="number" id="min_duty" step="5" value="85" style="width:100%; margin-top:3px;">
-        </div>
-        <div style="flex:1;">
-          <label style="font-size:11px; color:#8888aa; font-weight:700;">Deadband (°)</label>
-          <input type="number" id="deadband" step="0.05" value="0.25" style="width:100%; margin-top:3px;">
-        </div>
-      </div>
 
-      <!-- Row 3: Safety Clamps & Limits -->
-      <div style="display:flex; gap:8px; margin-bottom:12px;">
-        <div style="flex:1;">
-          <label style="font-size:11px; color:#8888aa; font-weight:700;">Max Duty Clamp</label>
-          <input type="number" id="max_duty" step="25" value="700" style="width:100%; margin-top:3px;">
+        <!-- Potentiometer and Control Diagnostics Card -->
+        <div class="card">
+          <h2>Potentiometer and Control Diagnostics</h2>
+          <p id="encoder-health">Waiting for sensor status...</p>
+          <p style="margin-top:4px;">Disarm and hold the shaft still for the stationary check. This reads the ADC and does not command motion.</p>
+          <div class="btn-row">
+            <button id="encoder-check-btn" onclick="checkEncoder()">10-second Stationary Sensor Check</button>
+            <button onclick="downloadDiagnostics()">Download Diagnostics</button>
+          </div>
+          <p id="encoder-check-result" style="margin-top:8px; font-size:12px;"></p>
+          <p style="font-size:11px; color:#8888aa; margin-top:6px;">Download immediately after failed calibration or E-stop, before sending another target. Includes Joint 1 control history; PWM values are software commands, not electrical measurements.</p>
         </div>
-        <div style="flex:1;">
-          <label style="font-size:11px; color:#8888aa; font-weight:700;">Soft Min (°)</label>
-          <input type="number" id="soft_min" step="5" value="0.0" style="width:100%; margin-top:3px;">
-        </div>
-        <div style="flex:1;">
-          <label style="font-size:11px; color:#8888aa; font-weight:700;">Soft Max (°)</label>
-          <input type="number" id="soft_max" step="5" value="360.0" style="width:100%; margin-top:3px;">
-        </div>
-      </div>
 
-      <div class="btn-row">
-        <button class="btn-primary" onclick="setPid()">Apply Settings</button>
-        <button onclick="savePid()">💾 Save to Flash</button>
-        <button onclick="startAutodetect(1)" style="border-color:#38bdf8; color:#38bdf8;">🔄 Auto-Detect Polarity</button>
-        <button onclick="startAutotune(1)" style="border-color:#00e5a0; color:#00e5a0;">⚡ Multi-point PID Tune</button>
-      </div>
-      <p style="font-size:12px; color:#aaa;">Polarity detection only checks direction. PID tuning measures +/-5, 10 and 15 degrees, then validates candidate gains (about 1-3 minutes). Results apply in RAM; Save to Flash keeps them after restart.</p>
-      <button onclick="stopAutotune()">Stop Calibration</button>
-      <div id="tune-msg" class="ok-msg" style="display:none;"></div>
-    </div>
+        <!-- USB Control and Telemetry Card -->
+        <div class="card">
+          <h2>USB Control and Telemetry</h2>
+          <p>Use the board's native USB port. Control and telemetry start disabled after boot. Enabling telemetry alone does not move motors.</p>
+          <div style="display:flex; flex-direction:column; gap:6px; margin:8px 0;">
+            <label><input type="checkbox" id="usb-control"> Use USB motion commands</label>
+            <label><input type="checkbox" id="usb-telemetry"> Send USB telemetry</label>
+            <label>Telemetry Hz <input type="number" id="usb-hz" min="1" max="100" value="100" style="width:80px;"></label>
+          </div>
+          <button onclick="configureUsb()">Apply USB Settings</button>
+          <p id="usb-status" style="margin-top:8px;">Waiting for USB status...</p>
+          <p id="loop-timing" style="font-size:11px; color:#8888aa; margin-top:4px;"></p>
+        </div>
 
-    <!-- Wireless OTA Firmware Update Card (Direct from MyBot) -->
-    <div class="card">
-      <h2>OTA Firmware Update</h2>
-      <input type="file" id="ota-file" accept=".bin" style="color:#a0a0d0; margin-bottom:10px; width:100%;">
-      <div style="background:#0a0a1e; border-radius:6px; height:8px; margin-bottom:8px; overflow:hidden;">
-        <div id="ota-bar" style="width:0%; height:100%; background:linear-gradient(90deg, #00e5a0, #7c6af7); transition:width .3s;"></div>
+        <!-- Wireless OTA Firmware Update Card -->
+        <div class="card">
+          <h2>OTA Firmware Update</h2>
+          <input type="file" id="ota-file" accept=".bin" style="color:#a0a0d0; margin-bottom:10px; width:100%;">
+          <div style="background:#0a0a1e; border-radius:6px; height:8px; margin-bottom:8px; overflow:hidden;">
+            <div id="ota-bar" style="width:0%; height:100%; background:linear-gradient(90deg, #00e5a0, #7c6af7); transition:width .3s;"></div>
+          </div>
+          <button class="btn-primary" id="ota-btn" onclick="doOTA()">Flash Firmware</button>
+          <div class="err-msg" id="ota-msg"></div>
+        </div>
+
       </div>
-      <button class="btn-primary" id="ota-btn" onclick="doOTA()">Flash Firmware</button>
-      <div class="err-msg" id="ota-msg"></div>
-    </div>
+    </details>
 
   </div>
 
@@ -550,6 +674,23 @@
     let lastUsbSettings = '';
     let plotEnabled = false;
     let animFrameId = null;
+    let advOpen = false;
+
+    function onAdvToggle(isOpen) {
+      advOpen = isOpen;
+      const b = document.getElementById('adv-status-badge');
+      if (b) {
+        b.textContent = isOpen ? 'Active (Expanded)' : 'Click to Expand';
+        b.className = isOpen ? 'badge green' : 'badge';
+      }
+      if (isOpen && plotEnabled) {
+        resizeCanvas();
+        if (!animFrameId) animFrameId = requestAnimationFrame(renderScope);
+      } else if (!isOpen && animFrameId) {
+        cancelAnimationFrame(animFrameId);
+        animFrameId = null;
+      }
+    }
 
     const canvas = document.getElementById('scope');
     const ctx = canvas.getContext('2d');
@@ -576,7 +717,7 @@
         wrapper.style.display = 'block';
         if (toggleLabel) toggleLabel.textContent = '📈 Oscilloscope Active (On)';
         resizeCanvas();
-        if (!animFrameId) {
+        if (advOpen && !animFrameId) {
           animFrameId = requestAnimationFrame(renderScope);
         }
         resetPolling(160);
@@ -668,7 +809,11 @@
       }
       ctx.stroke();
 
-      animFrameId = requestAnimationFrame(renderScope);
+      if (plotEnabled && advOpen) {
+        animFrameId = requestAnimationFrame(renderScope);
+      } else {
+        animFrameId = null;
+      }
     }
 
     // --- Telemetry Polling (Non-blocking queue) ---
@@ -697,7 +842,7 @@
         currentActual = d.m1.actual;
         currentDuty = d.m1.duty;
 
-        if (plotEnabled) {
+        if (plotEnabled && advOpen) {
           targetHist.push(currentTarget); targetHist.shift();
           profiledHist.push(currentProfiled); profiledHist.shift();
           actualHist.push(currentActual); actualHist.shift();
@@ -710,6 +855,29 @@
         document.getElementById('j1-duty').textContent = currentDuty;
         const j1RawVal = (d.pot && d.pot.j1_raw !== undefined) ? d.pot.j1_raw : (d.as5600 ? d.as5600.raw : 0);
         document.getElementById('j1-raw').textContent = j1RawVal;
+        const inv1Chk = document.getElementById('inv-check');
+        if (inv1Chk) inv1Chk.checked = d.m1.inv;
+        const inv1Badge = document.getElementById('inv-badge');
+        if (inv1Badge) inv1Badge.textContent = d.m1.inv ? 'Inverted' : 'Normal';
+
+        // Joint 2 Telemetry (Pitch)
+        if (d.m2) {
+          const elJ2Actual = document.getElementById('j2-actual');
+          if (elJ2Actual) elJ2Actual.textContent = d.m2.actual.toFixed(2) + '°';
+          const elJ2Target = document.getElementById('j2-target');
+          if (elJ2Target) elJ2Target.textContent = d.m2.target.toFixed(2) + '°';
+          const elJ2Err = document.getElementById('j2-err');
+          if (elJ2Err) elJ2Err.textContent = d.m2.error.toFixed(2) + '°';
+          const elJ2Duty = document.getElementById('j2-duty');
+          if (elJ2Duty) elJ2Duty.textContent = d.m2.duty;
+          const j2RawVal = (d.pot && d.pot.j2_raw !== undefined) ? d.pot.j2_raw : 0;
+          const elJ2Raw = document.getElementById('j2-raw');
+          if (elJ2Raw) elJ2Raw.textContent = j2RawVal;
+          const inv2Chk = document.getElementById('inv2-check');
+          if (inv2Chk) inv2Chk.checked = d.m2.inv;
+          const inv2Badge = document.getElementById('inv2-badge');
+          if (inv2Badge) inv2Badge.textContent = d.m2.inv ? 'Inverted' : 'Normal';
+        }
 
         // Refresh when controller gains change, including tuning and rollback.
         if (d.pid && (!pidInputsPopulated || d.pid_revision !== pidRevision)) {
@@ -784,6 +952,23 @@
             } else {
               sBadge.className = 'badge green';
               sBadge.textContent = 'Sensor OK';
+            }
+          }
+
+          const sBadge2 = document.getElementById('j2-sensor-badge');
+          if (sBadge2) {
+            if (!j2Conn) {
+              sBadge2.className = 'badge red';
+              sBadge2.textContent = 'Sensor Unplugged';
+            } else if (pot.j2_raw <= 15) {
+              sBadge2.className = 'badge yellow';
+              sBadge2.textContent = 'Rail Min (0V)';
+            } else if (pot.j2_raw >= 4080) {
+              sBadge2.className = 'badge yellow';
+              sBadge2.textContent = 'Rail Max (3.3V)';
+            } else {
+              sBadge2.className = 'badge green';
+              sBadge2.textContent = 'Sensor OK';
             }
           }
         }
@@ -863,24 +1048,29 @@
       poll();
     }
 
-    async function setTargetAngle(deg) {
+    async function setTargetAngle(deg, joint = 1) {
+      if (isNaN(deg)) return;
       if (!armed && !estopActive) {
         await setArm(1);
       }
-      document.getElementById('cmd-angle').value = deg.toFixed(1);
-      await fetch('/api/target?joint=1&angle=' + deg, {method: 'POST'});
+      if (joint === 1) {
+        const cmdEl = document.getElementById('cmd-angle');
+        if (cmdEl) cmdEl.value = deg.toFixed(1);
+      }
+      await fetch('/api/target?joint=' + joint + '&angle=' + deg, {method: 'POST'});
+      poll();
     }
 
     function stepTarget(delta) {
       if (!armed && !estopActive) {
         setArm(1);
       }
-      setTargetAngle(currentTarget + delta);
+      setTargetAngle(currentTarget + delta, 1);
     }
 
     function cmdTargetFromInput() {
       const val = parseFloat(document.getElementById('cmd-angle').value);
-      if (!isNaN(val)) setTargetAngle(val);
+      if (!isNaN(val)) setTargetAngle(val, 1);
     }
 
     // Open-loop jog works immediately on click
@@ -890,8 +1080,10 @@
     }
 
     async function toggleInversion(joint) {
-      const inv = document.getElementById('inv-check').checked ? 1 : 0;
+      const chk = document.getElementById(joint === 2 ? 'inv2-check' : 'inv-check');
+      const inv = chk && chk.checked ? 1 : 0;
       await fetch('/api/motor/invert?joint=' + joint + '&inverted=' + inv, {method: 'POST'});
+      poll();
     }
 
     async function calibrateZero(joint) {
